@@ -1,0 +1,14 @@
+{
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Spring Boot-DajeongApplication<dajeong>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "com.dajeong.dajeong.DajeongApplication",
+            "projectName": "dajeong",
+            "args": "",
+            "envFile": "${workspaceFolder}/.env"
+        }
+    ]
+}
