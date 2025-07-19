@@ -2,6 +2,9 @@
 ///Post.java
 package com.dajeong.dajeong.entity;
 
+import com.dajeong.dajeong.entity.enums.AgeGroup;
+import com.dajeong.dajeong.entity.enums.Nationality;
+import com.dajeong.dajeong.entity.enums.Region;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -23,12 +26,11 @@ public class Post {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // 댓글 연관관계: Post 삭제 시 연관된 Comment들도 함께 삭제
     @OneToMany(
             mappedBy = "post",
             cascade = CascadeType.REMOVE,
             orphanRemoval = true,
-            fetch = FetchType.LAZY      // 기본 LAZY지만 명시하는 것이 좋습니다
+            fetch = FetchType.LAZY
     )
     private List<Comment> comments = new ArrayList<>();
 
@@ -38,14 +40,17 @@ public class Post {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private String nationality;
+    private Nationality nationality;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private String region;
+    private Region region;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private String ageGroup;
+    private AgeGroup ageGroup;
 
     @Column(nullable = false)
     private int likeCount = 0;
