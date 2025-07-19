@@ -7,11 +7,15 @@ import com.dajeong.dajeong.dto.PostResponseDTO;
 import com.dajeong.dajeong.entity.Post;
 import com.dajeong.dajeong.entity.PostLike;
 import com.dajeong.dajeong.entity.User;
+import com.dajeong.dajeong.entity.enums.Nationality;
+import com.dajeong.dajeong.entity.enums.Region;
+import com.dajeong.dajeong.entity.enums.AgeGroup;
 import com.dajeong.dajeong.repository.PostLikeRepository;
 import com.dajeong.dajeong.repository.PostRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Comparator;
 import java.util.stream.Stream;
@@ -25,10 +29,10 @@ public class PostService {
     private final PostRepository postRepository;
     private final PostLikeRepository postLikeRepository;
 
+    @Transactional
     public boolean likePost(Long postId, User user) {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 게시글이 없습니다."));
-        // 좋아요 중복처리 로직
         if (postLikeRepository.existsByUserAndPost(user, post)) {
             return false;
         }
@@ -42,17 +46,19 @@ public class PostService {
         return true;
     }
 
+    @Transactional
     public void createPost(PostRequestDTO dto, User user) {
         Post post = new Post();
         post.setTitle(dto.getTitle());
         post.setContent(dto.getContent());
-        post.setNationality(dto.getNationality());
-        post.setRegion(dto.getRegion());
-        post.setAgeGroup(dto.getAgeGroup());
+        post.setNationality(Nationality.valueOf(dto.getNationality()));
+        post.setRegion(Region.valueOf(dto.getRegion()));
+        post.setAgeGroup(AgeGroup.valueOf(dto.getAgeGroup()));
         post.setAuthor(user);
         postRepository.save(post);
     }
 
+    @Transactional(readOnly = true)
     public List<PostResponseDTO> getFilteredPosts(
             String nationality,
             String region,
@@ -60,15 +66,25 @@ public class PostService {
             String keyword,
             String sort
     ) {
-        List<Post> posts = postRepository.findAll();
-        Stream<Post> stream = posts.stream();
+        Stream<Post> stream = postRepository.findAll().stream();
 
-        if (nationality != null) stream = stream.filter(p -> p.getNationality().equals(nationality));
-        if (region      != null) stream = stream.filter(p -> p.getRegion().equals(region));
-        if (ageGroup    != null) stream = stream.filter(p -> p.getAgeGroup().equals(ageGroup));
-        if (keyword     != null) stream = stream.filter(p ->
-                p.getTitle().contains(keyword) || p.getContent().contains(keyword)
-        );
+        if (nationality != null) {
+            Nationality natEnum = Nationality.valueOf(nationality);
+            stream = stream.filter(p -> p.getNationality() == natEnum);
+        }
+        if (region != null) {
+            Region regEnum = Region.valueOf(region);
+            stream = stream.filter(p -> p.getRegion() == regEnum);
+        }
+        if (ageGroup != null) {
+            AgeGroup ageEnum = AgeGroup.valueOf(ageGroup);
+            stream = stream.filter(p -> p.getAgeGroup() == ageEnum);
+        }
+        if (keyword != null && !keyword.isBlank()) {
+            stream = stream.filter(p ->
+                    p.getTitle().contains(keyword) || p.getContent().contains(keyword)
+            );
+        }
 
         List<Post> filtered = "popular".equals(sort)
                 ? stream.sorted(Comparator.comparing(Post::getLikeCount).reversed()).toList()
@@ -79,28 +95,28 @@ public class PostService {
                         post.getId(),
                         post.getTitle(),
                         post.getContent(),
-                        post.getAuthor().getName(),   // 작성자 이름
-                        post.getNationality(),
-                        post.getRegion(),
-                        post.getAgeGroup(),
+                        post.getAuthor().getName(),
+                        post.getNationality().getDescription(),  // 한글 설명 반환
+                        post.getRegion().getDescription(),
+                        post.getAgeGroup().getDescription(),
                         post.getLikeCount(),
                         post.getCreatedAt()
                 ))
                 .collect(Collectors.toList());
     }
 
+    @Transactional
     public boolean deletePost(Long postId, User user) {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 게시글이 없습니다"));
-
-        // 작성자와 요청자가 다르면 false 반환
         if (!post.getAuthor().getId().equals(user.getId())) {
             return false;
         }
-
         postRepository.delete(post);
         return true;
     }
+
+    @Transactional(readOnly = true)
     public PostResponseDTO getPostById(Long id) {
         Post post = postRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("해당 게시글이 없습니다"));
@@ -109,12 +125,11 @@ public class PostService {
                 post.getTitle(),
                 post.getContent(),
                 post.getAuthor().getName(),
-                post.getNationality(),
-                post.getRegion(),
-                post.getAgeGroup(),
+                post.getNationality().getDescription(),
+                post.getRegion().getDescription(),
+                post.getAgeGroup().getDescription(),
                 post.getLikeCount(),
                 post.getCreatedAt()
         );
     }
-
 }
