@@ -19,12 +19,18 @@ public class UserService {
 
     // 전체 유저 목록 조회
     public List<UserlistDTO> getUserListDTO() {
-        List<User> users = userRepository.findAll();
-        return users.stream()
+        return userRepository.findAll().stream()
                 .map(u -> UserlistDTO.builder()
                         .id(u.getId())
                         .username(u.getUsername())
-                        .build())
+                        .name(u.getName())
+                        .nationality(u.getNationality())
+                        .age(u.getAge())
+                        .region(u.getRegion())
+                        .married(u.getMarried())
+                        .hasChildren(u.getHasChildren())
+                        .build()
+                )
                 .toList();
     }
 
