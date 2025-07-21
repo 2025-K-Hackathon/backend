@@ -8,6 +8,7 @@ import java.util.List;
 
 @Getter @Setter
 public class DiaryAIResponseDTO {
+    private String originalText;
     private String fullCorrectedText;
     private String reply;
     private List<Correction> corrections;
