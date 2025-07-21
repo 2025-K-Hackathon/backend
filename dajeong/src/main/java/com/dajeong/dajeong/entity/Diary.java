@@ -9,6 +9,7 @@ import lombok.Setter;
 import jakarta.persistence.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Getter
@@ -28,6 +29,25 @@ public class Diary {
 
     @Column(columnDefinition = "TEXT")
     private String content;
+
+    @Column(columnDefinition = "TEXT")
+    private String correctedText;
+
+    @Column(columnDefinition = "TEXT")
+    private String reply;
+
+    @ElementCollection
+    @CollectionTable(name = "diary_incorrect_words", joinColumns = @JoinColumn(name = "diary_id"))
+    @Column(name = "word")
+    private List<String> incorrectWords;
+
+    @ElementCollection
+    @CollectionTable(name = "diary_corrected_words", joinColumns = @JoinColumn(name = "diary_id"))
+    @Column(name = "word")
+    private List<String> correctedWords;
+
+    @Column(columnDefinition = "json")
+    private String correctionsJson;
 
     // 시각은 자동 저장
     private LocalDateTime createdAt = LocalDateTime.now();
