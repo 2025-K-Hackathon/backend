@@ -31,6 +31,8 @@ dependencies {
     annotationProcessor 'org.projectlombok:lombok'
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'io.github.cdimascio:java-dotenv:5.2.2'
+	implementation("com.theokanning.openai-gpt3-java:service:0.18.2")
+	implementation 'io.github.java-diff-utils:java-diff-utils:4.12'
 
 }
 
