@@ -98,6 +98,7 @@ public class DiaryService {
         }
 
         DiaryAIResponseDTO dto = new DiaryAIResponseDTO();
+        dto.setOriginalText(diary.getContent());
         dto.setFullCorrectedText(diary.getCorrectedText());
         dto.setReply(diary.getReply());
         dto.setCorrections(corrections);
