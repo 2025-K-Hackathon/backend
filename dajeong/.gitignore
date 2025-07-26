@@ -1,5 +1,6 @@
 dajeong/.env
 DJ.pem
+.env
 
 # Java & Spring Boot 기본
 *.class
