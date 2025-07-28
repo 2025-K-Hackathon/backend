@@ -3,6 +3,7 @@ package com.dajeong.dajeong.service;
 import com.dajeong.dajeong.dto.*;
 import com.dajeong.dajeong.entity.Diary;
 import com.dajeong.dajeong.entity.User;
+import com.dajeong.dajeong.entity.enums.Nationality;
 import com.dajeong.dajeong.repository.DiaryRepository;
 import com.dajeong.dajeong.util.CorrectionLocator;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -185,6 +186,75 @@ public class DiaryService {
             throw new RuntimeException("AI 응답 파싱 실패: " + e.getMessage(), e);
         }
     }
+
+    @Transactional(readOnly = true)
+    public String translateReply(User user, Long diaryId) {
+        if (user.getNationality() == null || user.getNationality() == Nationality.PRIVATE) {
+            return "국적이 설정되어 있지 않습니다.";
+        }
+
+        Diary diary = diaryRepository.findById(diaryId)
+                .orElseThrow(() -> new RuntimeException("해당 일기를 찾을 수 없습니다."));
+
+        if (!diary.getUser().getId().equals(user.getId())) {
+            throw new RuntimeException("본인의 일기만 번역할 수 있습니다.");
+        }
+
+        String reply = diary.getReply();
+        if (reply == null || reply.isBlank()) {
+            return "번역할 답변이 없습니다.";
+        }
+
+        // 모든 국적자에게 → "한국어 → 해당 언어" 번역
+        // 예시에서는 한국어 → 베트남어 등
+        String targetLang = switch (user.getNationality()) {
+            case VIETNAM -> "베트남어";
+            case CHINA -> "중국어";
+            case PHILIPPINES -> "영어";
+            case THAILAND -> "태국어";
+            case INDONESIA -> "인도네시아어";
+            case ETC -> "사용자의 모국어";
+            default -> throw new IllegalArgumentException("번역 대상 언어를 알 수 없습니다.");
+        };
+
+        String prompt = String.format("""
+        다음 문장을 %s로 자연스럽게 번역하고, 번역된 문장만 출력하세요. 
+        설명이나 예시 절대 포함하지 마세요. 
+        그저 번역된 문장만 출력하세요:
+        
+        %s
+        """, targetLang, reply);
+
+
+        Map<String, Object> body = Map.of(
+                "model", modelId,
+                "messages", List.of(Map.of("role", "user", "content", prompt)),
+                "temperature", 0.7,
+                "max_tokens", 512
+        );
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(apiKey);
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        HttpEntity<Map<String, Object>> req = new HttpEntity<>(body, headers);
+
+        RestTemplate tpl = new RestTemplate();
+        ResponseEntity<Map> resp = tpl.exchange(
+                apiBase + "/chat/completions",
+                HttpMethod.POST,
+                req,
+                Map.class
+        );
+
+        try {
+            Map<?, ?> choice  = ((List<Map<?, ?>>) resp.getBody().get("choices")).get(0);
+            Map<?, ?> message = (Map<?, ?>) choice.get("message");
+            return ((String) message.get("content")).trim();
+        } catch (Exception e) {
+            throw new RuntimeException("번역 결과 파싱 실패: " + e.getMessage(), e);
+        }
+    }
+
 
     private String extractPureJson(String raw) {
         String t = raw.trim();
