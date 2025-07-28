@@ -17,5 +17,5 @@ public class UserlistDTO {
     private int age;
     private String region;
     private Boolean married;
-    private Boolean hasChildren;
+    private String hasChildren;
 }

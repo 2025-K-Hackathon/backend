@@ -30,12 +30,21 @@ spring:
   profiles:
     active: dev
 
+
 server:
+  forward-headers-strategy: native
   error:
-    include-stacktrace: never        # 스택트레이스 절대 안 보이게
-    include-message: always           # 에러 메시지도 안 보이게(원하면 always로 변경)
+    include-stacktrace: never        
+    include-message: always   
     include-binding-errors: never
 
 logging:
   level:
     org.springframework.security.web.FilterChainProxy: DEBUG
+
+openai:
+  api:
+    key: ${openai.api.key}
+    base: ${openai.api.base}
+  model:
+    id: ${openai.model.id}

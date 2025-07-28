@@ -51,9 +51,9 @@ public class PostService {
         Post post = new Post();
         post.setTitle(dto.getTitle());
         post.setContent(dto.getContent());
-        post.setNationality(Nationality.valueOf(dto.getNationality()));
-        post.setRegion(Region.valueOf(dto.getRegion()));
-        post.setAgeGroup(AgeGroup.valueOf(dto.getAgeGroup()));
+        post.setNationality(dto.getNationality());
+        post.setRegion(dto.getRegion());
+        post.setAgeGroup(dto.getAgeGroup());
         post.setAuthor(user);
         postRepository.save(post);
     }
