@@ -1,4 +1,6 @@
 package com.dajeong.dajeong.dto;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+
 import com.dajeong.dajeong.entity.Phrase;
 import com.dajeong.dajeong.entity.enums.Situation;
 
@@ -13,7 +15,11 @@ public record PhraseResponseDTO(
 {
     public static PhraseResponseDTO fromEntity(Phrase p, String ttsUrl) {
         Situation s = p.getSituation();
-        String iconUrl = "/images/icons/" + s.getIconFile(); 
+        String iconUrl = ServletUriComponentsBuilder
+            .fromCurrentContextPath() 
+            .path("/images/icons/")
+            .path(s.getIconFile())
+            .toUriString();
         return new PhraseResponseDTO(
             p.getId(),
             p.getSituation().name(),
