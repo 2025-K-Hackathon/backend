@@ -1,21 +1,30 @@
 package com.dajeong.dajeong.dto;
 import com.dajeong.dajeong.entity.Phrase;
+import com.dajeong.dajeong.entity.enums.Situation;
 
 public record PhraseResponseDTO(
     Long id,
     String situation,
-    String inputLang,
     String inputText,
-    String translatedText
+    String translatedText,
+    String iconUrl,
+    String ttsUrl
 )
 {
-    public static PhraseResponseDTO fromEntity(Phrase p) {
+    public static PhraseResponseDTO fromEntity(Phrase p, String ttsUrl) {
+        Situation s = p.getSituation();
+        String iconUrl = "/images/icons/" + s.getIconFile(); 
         return new PhraseResponseDTO(
             p.getId(),
             p.getSituation().name(),
-            p.getInputLang(),
             p.getInputText(),
-            p.getTranslatedText()
+            p.getTranslatedText(),
+            iconUrl,
+            ttsUrl
+
         );
+    }
+    public static PhraseResponseDTO fromEntity(Phrase p) {
+        return fromEntity(p, null);   // or "" 빈 문자열로 해도 OK
     }
 }

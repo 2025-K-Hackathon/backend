@@ -1,28 +1,32 @@
 package com.dajeong.dajeong.controller;
 
-import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import jakarta.servlet.http.HttpSession;
 import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
 import org.springframework.validation.BindingResult;
-import java.util.List;
+import com.dajeong.dajeong.entity.User;
 
 import com.dajeong.dajeong.dto.SignupDTO;
 import com.dajeong.dajeong.dto.LoginDTO;
-import com.dajeong.dajeong.dto.UserlistDTO;
 import com.dajeong.dajeong.service.UserService;
+import com.dajeong.dajeong.dto.UserResponseDTO;
 
 @RestController
-@RequiredArgsConstructor
 @Transactional
 public class UserController {
 
     private final UserService userService;
+
+    public UserController(UserService userService) {
+        this.userService = userService;
+    }
 
     // 회원가입
     @PostMapping("/api/users/signup")
@@ -38,10 +42,18 @@ public class UserController {
         }
     }
 
-    // 유저 목록 조회
-    @GetMapping("/api/users")
-    public ResponseEntity<List<UserlistDTO>> getUserList() {
-        return ResponseEntity.ok(userService.getUserListDTO());
+    // 내 정보 조회
+    @GetMapping("/api/users/me")
+    public ResponseEntity<UserResponseDTO> getMyInfo(HttpSession session) {
+        User user = (User) session.getAttribute("user");
+        if (user == null) {
+            throw new ResponseStatusException(
+                HttpStatus.UNAUTHORIZED,
+                "로그인이 필요합니다"
+            );
+        }
+        UserResponseDTO dto = userService.getCurrentUserDTO(user);
+        return ResponseEntity.ok(dto);
     }
 
     // 로그인
