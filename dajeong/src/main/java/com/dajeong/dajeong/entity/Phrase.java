@@ -21,10 +21,6 @@ public class Phrase {
     @Column(nullable = false)
     private Situation situation;
 
-    // 자동 감지된 원문 언어 코드
-    @Column(length = 5, nullable = false)
-    private String inputLang;
-
     // 사용자가 입력한 원문 텍스트
     @Column(length = 500, nullable = false)
     private String inputText;
@@ -33,23 +29,29 @@ public class Phrase {
     @Column(length = 500, nullable = false)
     private String translatedText;
 
+    //private String ttsUrl;
+
     protected Phrase() { }  
 
     // 새 Phrase 생성 시 
     public Phrase(Situation situation,
-                  String inputLang,
                   String inputText,
                   String translatedText) {
         this.situation      = situation;
-        this.inputLang      = inputLang;
         this.inputText      = inputText;
         this.translatedText = translatedText;
     }
     public Long getId() { return id; }
     public Situation getSituation() { return situation; }
-    public String getInputLang() { return inputLang; }
     public String getInputText() { return inputText; }
     public String getTranslatedText() { return translatedText; }
 
-    public void setInputText(String inputText) { this.inputText = inputText; }
+    public void setInputText(String inputText) { 
+        this.inputText = inputText; 
+    }
+    public void setTranslatedText(String translatedText) {
+        this.translatedText = translatedText;
+    }
+    //public String getTtsUrl() { return ttsUrl; }
+    //public void setTtsUrl(String ttsUrl) { this.ttsUrl = ttsUrl; }
 }
