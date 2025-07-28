@@ -61,4 +61,9 @@ public class Post {
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
+
+    @ElementCollection
+    @CollectionTable(name = "post_images", joinColumns = @JoinColumn(name = "post_id"))
+    @Column(name = "image_url")
+    private List<String> imageUrls = new ArrayList<>();
 }
