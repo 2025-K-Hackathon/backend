@@ -8,6 +8,7 @@ import jakarta.servlet.http.HttpSession;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import com.dajeong.dajeong.dto.SituationDTO;
 import com.dajeong.dajeong.dto.PhraseRequestDTO;
@@ -29,27 +30,33 @@ public class ConversationController {
     @GetMapping
     public List<SituationDTO> listCategories() {
         return Arrays.stream(Situation.values())
-            .map(ct -> new SituationDTO(ct.name(), ct.getDisplayName()))
+            .map(SituationDTO::basicOf)
             .collect(Collectors.toList());
     }
 
     // 상황 카테고리별 문장 리스트 조회
     @GetMapping("/{type}")
-    public List<PhraseResponseDTO> listPhrases(
-        @PathVariable("type") String type // URL의 {type} 부분을 문자열로 받음
-    ) {
+    public List<PhraseResponseDTO> listPhrases(@PathVariable("type") String type) {
         // 들어오는 type 문자열을 Situation enum으로 변환해서 situation 변수에 담기
         Situation situation = Situation.valueOf(type.toUpperCase());
         List<Phrase> phrases = phraseService.list(situation);
-
         if (phrases == null || phrases.isEmpty()) {
             throw new ResponseStatusException(
                 HttpStatus.NOT_FOUND,
                 "해당 카테고리에 회화 문장이 없습니다."
             );
     }
+       // base URL 생성
+        String baseUrl = ServletUriComponentsBuilder
+            .fromCurrentContextPath()
+            .path("/api/tts/synthesize/")
+            .toUriString();
+                     
         return phrases.stream()
-            .map(PhraseResponseDTO::fromEntity)
+            .map(p -> {
+            String ttsUrl = baseUrl + p.getId();
+            return PhraseResponseDTO.fromEntity(p, ttsUrl);
+        })
             .collect(Collectors.toList());
     }
 
@@ -66,11 +73,9 @@ public class ConversationController {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인 필요");
         }
         Situation situation = Situation.valueOf(type.toUpperCase());
-        Phrase p = phraseService.create(
+        Phrase p = phraseService.createWithAutoTranslate(
             situation,
-            dto.inputLang(),
-            dto.inputText(),
-            dto.translatedText()
+            dto.getInputText()
         );
         return PhraseResponseDTO.fromEntity(p);
     }
@@ -87,8 +92,8 @@ public class ConversationController {
         if (user == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인 필요");
         }
-        // type 검증만, service는 id 기준으로 수정
-        var p = phraseService.update(id, dto.inputText());
+        Situation.valueOf(type.toUpperCase());
+        Phrase p = phraseService.updateWithAutoTranslate(id, dto.getInputText());
         return PhraseResponseDTO.fromEntity(p);
     }
 
