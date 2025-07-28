@@ -13,14 +13,14 @@ public record SituationDTO(
 ) {
     public static SituationDTO basicOf(Situation s) {
         String iconBase = ServletUriComponentsBuilder
-            .fromCurrentContextPath()    // → https://your-domain.com
-            .path("/images/icons/")      // → + "/images/icons/"
+            .fromCurrentContextPath()   
+            .path("/images/icons/")     
             .toUriString();
 
         return new SituationDTO(
             s.name(),
             s.getDisplayName(),
-            iconBase + s.getIconFile(),  // 절대경로 아이콘 URL
+            iconBase + s.getIconFile(), 
             null
         );
     }
