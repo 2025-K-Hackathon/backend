@@ -63,4 +63,14 @@ public class DiaryController {
         return ResponseEntity.ok(result);
     }
 
+    /// 특정 일기 조언 번역
+    @GetMapping("/{id}/translate-reply")
+    public ResponseEntity<String> translateReply(@PathVariable Long id,
+                                                 HttpSession session) {
+        User user = (User) session.getAttribute("user");
+        if (user == null) throw new RuntimeException("로그인이 필요합니다.");
+        String translated = diaryService.translateReply(user, id);
+        return ResponseEntity.ok(translated);
+    }
+
 }
