@@ -2,6 +2,7 @@ dajeong/.env
 DJ.pem
 .env
 *.service
+dajeong-466810-f88dc4c32c0d.json
 
 # Java & Spring Boot 기본
 *.class
