@@ -4,7 +4,6 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 import com.dajeong.dajeong.entity.enums.Region;
-import com.dajeong.dajeong.entity.enums.AgeGroup;
 import com.dajeong.dajeong.entity.enums.Nationality;
 import com.dajeong.dajeong.entity.enums.Children;
 
@@ -36,8 +35,8 @@ public class SignupDTO {
     @NotNull(message = "국적을 선택하세요.")
     private Nationality nationality;
 
-    @NotNull(message = "연령대를 선택하세요.")
-    private AgeGroup ageGroup;
+    @NotNull(message = "출생년도는 숫자만 입력해 주세요.")
+    private Integer age;
 
     @NotNull(message = "지역을 선택하세요.")
     private Region region;
@@ -47,4 +46,7 @@ public class SignupDTO {
 
     @NotNull(message = "자녀 여부를 선택하세요.")
     private Children hasChildren;
+
+    @NotNull(message = "자녀 출생년도는 숫자만 입력해 주세요.")
+    private Integer childAge;
 }

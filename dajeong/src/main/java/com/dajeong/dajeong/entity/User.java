@@ -1,6 +1,5 @@
 package com.dajeong.dajeong.entity;
 import com.dajeong.dajeong.entity.enums.Region;
-import com.dajeong.dajeong.entity.enums.AgeGroup;
 import com.dajeong.dajeong.entity.enums.Nationality;
 import com.dajeong.dajeong.entity.enums.Children;
 
@@ -30,9 +29,11 @@ public class User {
     @Column(nullable = false)
     private Nationality nationality;
 
-    @Enumerated(EnumType.STRING)
     @Column(name = "age", nullable = false)
-    private AgeGroup ageGroup;
+    private Integer age;
+
+    @Column(name = "child_age", nullable = false)
+    private Integer childAge;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
