@@ -1,17 +1,15 @@
 package com.dajeong.dajeong.entity;
 import com.dajeong.dajeong.entity.enums.Situation;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 // 사용자가 입력한 외국어 문장과 번역 결과를 저장
 @Entity
 @Table(name = "phrase")
+@Getter
+@NoArgsConstructor
 public class Phrase {
     @Id
     @GeneratedValue
@@ -29,22 +27,20 @@ public class Phrase {
     @Column(length = 500, nullable = false)
     private String translatedText;
 
-    //private String ttsUrl;
-
-    protected Phrase() { }  
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 
     // 새 Phrase 생성 시 
     public Phrase(Situation situation,
                   String inputText,
-                  String translatedText) {
-        this.situation      = situation;
-        this.inputText      = inputText;
+                  String translatedText,
+                  User user) {
+        this.situation = situation;
+        this.inputText = inputText;
         this.translatedText = translatedText;
+        this.user = user;
     }
-    public Long getId() { return id; }
-    public Situation getSituation() { return situation; }
-    public String getInputText() { return inputText; }
-    public String getTranslatedText() { return translatedText; }
 
     public void setInputText(String inputText) { 
         this.inputText = inputText; 
@@ -52,6 +48,4 @@ public class Phrase {
     public void setTranslatedText(String translatedText) {
         this.translatedText = translatedText;
     }
-    //public String getTtsUrl() { return ttsUrl; }
-    //public void setTtsUrl(String ttsUrl) { this.ttsUrl = ttsUrl; }
 }

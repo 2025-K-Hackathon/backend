@@ -5,23 +5,22 @@ import java.util.NoSuchElementException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.dajeong.dajeong.entity.Phrase;
+import com.dajeong.dajeong.entity.User;
 import com.dajeong.dajeong.entity.enums.Situation;
 import com.dajeong.dajeong.external.TranslationClient;
 import com.dajeong.dajeong.repository.PhraseRepository;
+
+import jakarta.servlet.http.HttpSession;
+import lombok.RequiredArgsConstructor;
+
 import com.dajeong.dajeong.external.TranslationResult; 
 
 @Service
+@RequiredArgsConstructor
 public class PhraseService {
     private final PhraseRepository phraseRepository;
     private final TranslationClient translationClient;
-
-    public PhraseService(
-        PhraseRepository phraseRepository,
-        TranslationClient translationClient
-    ) {
-        this.phraseRepository    = phraseRepository;
-        this.translationClient   = translationClient;
-    }
+    private final HttpSession session;        
 
     public Phrase findById(Long id) {
         return phraseRepository.findById(id)
@@ -30,10 +29,9 @@ public class PhraseService {
             );
     }
 
-    // 카테고리 내 문장 리스트 조회
     @Transactional(readOnly = true)
-    public List<Phrase> list(Situation situation) {
-        return phraseRepository.findAllBySituation(situation);
+    public List<Phrase> listByUserAndSituation(User user, Situation situation) {
+        return phraseRepository.findAllBySituationAndUser(situation, user);
     }
 
     // 새 문장 추가
@@ -41,8 +39,9 @@ public class PhraseService {
     public Phrase create(Situation situation,
                          String inputLang,
                          String inputText,
-                         String translatedText) {
-        return phraseRepository.save(new Phrase(situation, inputText, translatedText));
+                         String translatedText,
+                         User user) {
+        return phraseRepository.save(new Phrase(situation, inputText, translatedText, user));
     }
 
     // 문장 수정 (텍스트만 변경)
@@ -69,6 +68,11 @@ public class PhraseService {
         Situation situation,
         String inputText
     ) {
+        // 세션에서 로그인된 User 꺼내기
+        User user = (User) session.getAttribute("user");
+        if (user == null) {
+            throw new IllegalStateException("세션에 로그인 정보가 없습니다.");
+        }
         // DeepL로 자동 감지 + 한글 번역
         TranslationResult result = translationClient.translateToKorean(inputText);
 
@@ -76,7 +80,8 @@ public class PhraseService {
         Phrase p = new Phrase(
             situation,
             inputText,
-            result.getTranslatedText()
+            result.getTranslatedText(),
+            user
         );
 
         return phraseRepository.save(p);
