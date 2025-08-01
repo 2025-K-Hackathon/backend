@@ -36,11 +36,19 @@ public class ConversationController {
 
     // 상황 카테고리별 문장 리스트 조회
     @GetMapping("/{type}")
-    public List<PhraseResponseDTO> listPhrases(@PathVariable("type") String type) {
+    public List<PhraseResponseDTO> listPhrases(
+        @PathVariable("type") String type, 
+        HttpSession session
+        ) {
+        User user = (User) session.getAttribute("user");
+        if (user == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인 필요");
+        }
         // 들어오는 type 문자열을 Situation enum으로 변환해서 situation 변수에 담기
         Situation situation = Situation.valueOf(type.toUpperCase());
-        List<Phrase> phrases = phraseService.list(situation);
-        if (phrases == null || phrases.isEmpty()) {
+        List<Phrase> myPhrases = phraseService.listByUserAndSituation(user, situation);
+    
+        if (myPhrases == null || myPhrases.isEmpty()) {
             throw new ResponseStatusException(
                 HttpStatus.NOT_FOUND,
                 "해당 카테고리에 회화 문장이 없습니다."
@@ -52,7 +60,7 @@ public class ConversationController {
             .path("/api/tts/synthesize/")
             .toUriString();
                      
-        return phrases.stream()
+        return myPhrases.stream()
             .map(p -> {
             String ttsUrl = baseUrl + p.getId();
             return PhraseResponseDTO.fromEntity(p, ttsUrl);
