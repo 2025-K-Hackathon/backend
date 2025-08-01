@@ -1,7 +1,6 @@
 package com.dajeong.dajeong.dto;
 import com.dajeong.dajeong.entity.User;
 import com.dajeong.dajeong.entity.enums.Nationality;
-import com.dajeong.dajeong.entity.enums.AgeGroup;
 import com.dajeong.dajeong.entity.enums.Region;
 import com.dajeong.dajeong.entity.enums.Children;
 
@@ -10,7 +9,8 @@ public record UserResponseDTO(
     String   username,
     String   name,
     Nationality nationality,
-    AgeGroup ageGroup,
+    Integer age,
+    Integer childAge,
     Region   region,
     Boolean  married,
     Children  hasChildren
@@ -21,7 +21,8 @@ public record UserResponseDTO(
             u.getUsername(),
             u.getName(),
             u.getNationality(),
-            u.getAgeGroup(),
+            u.getAge(),
+            u.getChildAge(),
             u.getRegion(),
             u.getMarried(),
             u.getHasChildren()
