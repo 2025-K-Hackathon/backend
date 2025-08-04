@@ -18,10 +18,8 @@ public class SecurityConfig {
   public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
     http
       .csrf(csrf -> csrf.disable())
-      .cors(cors -> cors.configurationSource(corsConfigurationSource())) // ✅ 추가
-      .authorizeHttpRequests(auth -> auth
-              .anyRequest().permitAll()
-      )
+      .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+      .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
       .formLogin(form -> form.disable())
       .httpBasic(basic -> basic.disable())
       .logout(logout -> logout.disable());
