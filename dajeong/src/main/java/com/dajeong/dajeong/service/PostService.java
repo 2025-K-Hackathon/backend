@@ -204,7 +204,12 @@ public class PostService {
     public PostDetailResponseDTO getPostDetail(Long id) {
         Post post = postRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("해당 게시글이 없습니다"));
-
+        String baseUrl = "https://dajeong.shop";
+        List<String> absoluteUrls = (post.getImageUrls() == null ? List.<String>of() : post.getImageUrls())
+                .stream()
+                // 이미 절대경로면 그대로 두고, 상대경로면 baseUrl 붙임
+                .map(u -> (u.startsWith("https://")) ? u : baseUrl + u)
+                .collect(Collectors.toList());
         return PostDetailResponseDTO.builder()
                 .id(post.getId())
                 .title(post.getTitle())
@@ -214,10 +219,9 @@ public class PostService {
                 .region(post.getRegion().getDescription())
                 .ageGroup(post.getAgeGroup().getDescription())
                 .likeCount(post.getLikeCount())
-                .commentCount(post.getComments().size())  // 댓글 개수
-                .imageUrls(post.getImageUrls())          // 이미지 리스트
+                .commentCount(post.getComments().size())
+                .imageUrls(absoluteUrls)
                 .createdAt(post.getCreatedAt())
                 .build();
     }
-
 }
