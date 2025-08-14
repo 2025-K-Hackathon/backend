@@ -9,6 +9,7 @@ import com.dajeong.dajeong.repository.CommentRepository;
 import com.dajeong.dajeong.repository.PostRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -33,16 +34,24 @@ public class CommentService {
     }
 
     // 댓글 목록 조회
+    @Transactional(readOnly = true)
     public List<CommentResponseDTO> getComments(Long postId) {
-        return commentRepository.findByPostIdOrderByCreatedAtAsc(postId).stream()
-                .map(c -> new CommentResponseDTO(
-                        c.getId(),
-                        c.getContent(),
-                        c.getUser().getName(),                     // 작성자 이름
-                        c.getUser().getNationality().getDescription(), // 작성자 국적
-                        c.getUser().getRegion().getDescription(),      // 작성자 지역
-                        c.getCreatedAt()
-                ))
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new IllegalArgumentException("게시글이 존재하지 않습니다"));
+
+        return post.getComments().stream()
+                .map(comment -> {
+                    User author = comment.getUser();
+                    return new CommentResponseDTO(
+                            comment.getId(),
+                            comment.getContent(),
+                            author.getName(),
+                            author.getNationality().getDescription(),  // ✅ 국적
+                            author.getRegion().getDescription(),       // ✅ 지역
+                            comment.getCreatedAt()
+                    );
+                })
                 .collect(Collectors.toList());
     }
+
 }

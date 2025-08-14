@@ -58,7 +58,7 @@ public class PostService {
     }
 
     @Transactional
-    public void createPost(PostRequestDTO dto, List<MultipartFile> images, User user) {
+    public Long createPost(PostRequestDTO dto, List<MultipartFile> images, User user) {
         Post post = new Post();
         post.setTitle(dto.getTitle());
         post.setContent(dto.getContent());
@@ -76,7 +76,8 @@ public class PostService {
             post.setImageUrls(imageUrls);
         }
 
-        postRepository.save(post);
+        Post saved = postRepository.save(post);
+        return saved.getId();
     }
 
     private List<String> saveImages(List<MultipartFile> images) {
@@ -142,19 +143,25 @@ public class PostService {
                 ? stream.sorted(Comparator.comparing(Post::getLikeCount).reversed()).toList()
                 : stream.sorted(Comparator.comparing(Post::getCreatedAt).reversed()).toList();
 
+        String baseUrl = "https://dajeong.shop";
+
         return filtered.stream()
-                .map(post -> new PostResponseDTO(
-                        post.getId(),
-                        post.getTitle(),
-                        post.getContent(),
-                        post.getAuthor().getName(),
-                        post.getNationality().getDescription(),  // 한글 설명 반환
-                        post.getRegion().getDescription(),
-                        post.getAgeGroup().getDescription(),
-                        post.getLikeCount(),
-                        post.getCreatedAt()
-                ))
-                .collect(Collectors.toList());
+            .map(post -> new PostResponseDTO(
+                    post.getId(),
+                    post.getTitle(),
+                    post.getContent(),
+                    post.getAuthor().getName(),
+                    post.getNationality().getDescription(),
+                    post.getRegion().getDescription(),
+                    post.getAgeGroup().getDescription(),
+                    post.getLikeCount(),
+                    post.getCreatedAt(),
+                    post.getComments().size(),
+                    post.getImageUrls().stream()
+                            .map(url -> baseUrl + url)
+                            .collect(Collectors.toList())
+            ))
+            .collect(Collectors.toList());
     }
 
     @Transactional
@@ -172,6 +179,9 @@ public class PostService {
     public PostResponseDTO getPostById(Long id) {
         Post post = postRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("해당 게시글이 없습니다"));
+
+        String baseUrl = "https://dajeong.shop";
+
         return new PostResponseDTO(
                 post.getId(),
                 post.getTitle(),
@@ -181,9 +191,14 @@ public class PostService {
                 post.getRegion().getDescription(),
                 post.getAgeGroup().getDescription(),
                 post.getLikeCount(),
-                post.getCreatedAt()
+                post.getCreatedAt(),
+                post.getComments().size(),
+                post.getImageUrls().stream()
+                        .map(url -> baseUrl + url)
+                        .collect(Collectors.toList())
         );
     }
+
 
     @Transactional(readOnly = true)
     public PostDetailResponseDTO getPostDetail(Long id) {
