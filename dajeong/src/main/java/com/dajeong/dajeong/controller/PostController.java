@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.http.ResponseEntity;
 import jakarta.servlet.http.HttpSession;
 import java.util.List;
+import java.util.Map;
 
 import com.dajeong.dajeong.dto.PostRequestDTO;
 import com.dajeong.dajeong.dto.PostResponseDTO;
@@ -47,6 +48,7 @@ public class PostController {
         if (user == null) {
             return ResponseEntity.status(401).body("로그인 필요");
         }
+
         PostRequestDTO dto = new PostRequestDTO();
         dto.setTitle(title);
         dto.setContent(content);
@@ -54,9 +56,11 @@ public class PostController {
         dto.setRegion(Region.valueOf(region));
         dto.setAgeGroup(AgeGroup.valueOf(ageGroup));
 
-        postService.createPost(dto, images, user);
-        return ResponseEntity.ok().build();
+        Long postId = postService.createPost(dto, images, user); // <- postId 받아오기
+
+        return ResponseEntity.ok().body(Map.of("postId", postId)); // <- postId 반환
     }
+
 
     @GetMapping
     public List<PostResponseDTO> getPosts(
