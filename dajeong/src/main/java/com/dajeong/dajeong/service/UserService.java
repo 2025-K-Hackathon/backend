@@ -2,22 +2,26 @@ package com.dajeong.dajeong.service;
 
 import com.dajeong.dajeong.dto.LoginDTO;
 import com.dajeong.dajeong.dto.SignupDTO;
-import com.dajeong.dajeong.dto.UserResponseDTO; 
+import com.dajeong.dajeong.dto.UserResponseDTO;
 import com.dajeong.dajeong.entity.User;
 import com.dajeong.dajeong.repository.UserRepository;
-
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.NoSuchElementException;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class UserService {
 
     private final UserRepository userRepository;
+    private final PolicyRecommendTrigger policyRecommendTrigger;
 
     // 회원가입
+    @Transactional
     public void saveDTOUser(SignupDTO signupDTO) {
         if (userRepository.existsByUsername(signupDTO.getUsername())) {
             throw new IllegalArgumentException("이미 등록된 아이디입니다.");
@@ -33,7 +37,14 @@ public class UserService {
                 .married(signupDTO.getMarried())
                 .hasChildren(signupDTO.getHasChildren())
                 .build();
-        userRepository.save(user);
+
+        User savedUser = userRepository.save(user);
+
+        try {
+            policyRecommendTrigger.generateAndSaveForToday(savedUser);
+        } catch (Exception e) {
+            log.warn("가입 직후 정책 추천 생성 실패 userId={}: {}", savedUser.getId(), e.getMessage());
+        }
     }
 
     // ID로 유저 DTO 조회

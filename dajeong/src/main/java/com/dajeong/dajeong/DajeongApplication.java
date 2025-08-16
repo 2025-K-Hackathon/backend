@@ -25,5 +25,6 @@ public class DajeongApplication {
 		// DeepL 설정
 		System.setProperty("deepl.api.key", Objects.requireNonNull(dotenv.get("DEEPL_API_KEY")));
 		SpringApplication.run(DajeongApplication.class, args);
+
 	}
 }
