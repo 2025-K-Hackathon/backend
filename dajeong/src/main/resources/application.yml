@@ -48,3 +48,9 @@ openai:
     base: ${openai.api.base}
   model:
     id: ${openai.model.id}
+
+dajeong:
+  python:
+    executable: "D:/projects/backend/dajeong/.venv/Scripts/python.exe"
+    base-dir: "./python"
+    wrapper-dir: "./python/wrappers"
