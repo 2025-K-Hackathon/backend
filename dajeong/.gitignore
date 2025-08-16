@@ -7,6 +7,8 @@ python/.hf_cache
 .venv/
 venv/
 python/policy_chroma_db/
+.venv/
+**/.hf_cache/
 
 
 # Java & Spring Boot 기본
