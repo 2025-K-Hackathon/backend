@@ -4,6 +4,8 @@ package com.dajeong.dajeong.controller;
 import com.dajeong.dajeong.entity.User;
 import com.dajeong.dajeong.service.PolicyRecommendationService;
 import com.dajeong.dajeong.service.PolicyService;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -51,7 +53,14 @@ public class PolicyController {
             }
             Map<String, Object> resp = policyService.recommend(profile);
             System.out.println("[FastAPI 응답 전체 확인]");
-            System.out.println(new com.fasterxml.jackson.databind.ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(resp));
+            try {
+                System.out.println(new ObjectMapper()
+                        .writerWithDefaultPrettyPrinter()
+                        .writeValueAsString(resp));
+            } catch (JsonProcessingException e) {
+                e.printStackTrace();
+            }
+
             LocalDate todaySeoul = LocalDate.now(ZoneId.of("Asia/Seoul"));
             recommendationService.saveOrUpdateForDate(user, todaySeoul, resp);
 
