@@ -3,16 +3,11 @@ import json
 from datetime import datetime
 from dotenv import load_dotenv
 
-# 임베딩은 OpenAI 호환 엔드포인트 사용
+# 임베딩: OpenAI 호환 엔드포인트 (OpenRouter 등)
 from langchain_openai import OpenAIEmbeddings
 from langchain_chroma import Chroma
 
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.runnables import (
-    RunnableParallel,
-    RunnablePassthrough,
-    RunnableLambda,
-)
 from openai import OpenAI
 
 
@@ -30,8 +25,10 @@ def get_age(birth_year):
         return -1
 
 
-
 def get_policy_recommendations(user_profile: dict) -> dict:
+    """
+    Runnable 체인을 제거하고, 리트리버 → 프롬프트 문자열 → Chat Completions 직접 호출로 단순화.
+    """
     load_dotenv()
 
     API_KEY = os.getenv("OPENAI_API_KEY")
@@ -44,7 +41,7 @@ def get_policy_recommendations(user_profile: dict) -> dict:
         "user_profile": user_profile,
         "ai_recommendation": "",
         "source_documents": [],
-        "timestamp": datetime.now().isoformat()
+        "timestamp": datetime.now().isoformat(),
     }
 
     # DB 경로: 환경변수 우선, 없으면 기본 폴더
@@ -53,20 +50,29 @@ def get_policy_recommendations(user_profile: dict) -> dict:
         result["error"] = f"오류: '{DB_DIRECTORY}' 데이터베이스 폴더를 찾을 수 없습니다."
         return result
 
+    # OpenRouter 권장 헤더 (없어도 되지만 있으면 좋음)
+    headers = {
+        "HTTP-Referer": os.getenv("OR_REFERER", "https://github.com"),
+        "X-Title": os.getenv("OR_TITLE", "Dajeong"),
+    }
+
     print("로컬 임베딩 모델을 로드합니다...")
     embeddings = OpenAIEmbeddings(
         model=os.getenv("EMBED_MODEL", "openai/text-embedding-3-small"),
         api_key=API_KEY,
         base_url=API_BASE,
+        default_headers=headers,
     )
 
     db = Chroma(persist_directory=DB_DIRECTORY, embedding_function=embeddings)
     print("\n2. ChromaDB 로드 완료!")
 
+    # 지역 필터
     region = user_profile.get("region")
     search_regions = ["전국"] + ([region] if region else [])
     metadata_filter = {"region": {"$in": search_regions}}
 
+    # 질의문 생성
     base_query = (
         f"{user_profile.get('name')}은/는 "
         f"{user_profile.get('nationality')} 국적의 "
@@ -81,24 +87,21 @@ def get_policy_recommendations(user_profile: dict) -> dict:
     print(f'\n3. 생성된 AI 검색어: "{query_text}"')
     print(f"   적용된 DB 필터: {metadata_filter}")
 
+    # 리트리버
     retriever = db.as_retriever(
         search_type="similarity",
-        search_kwargs={"k": 3, "filter": metadata_filter}
+        search_kwargs={"k": 3, "filter": metadata_filter},
     )
 
-    client = OpenAI(api_key=API_KEY, base_url=API_BASE)
+    # OpenAI(OpenRouter) 클라이언트
+    client = OpenAI(api_key=API_KEY, base_url=API_BASE, default_headers=headers)
 
-    def _call_openrouter(prompt_text: str) -> str:
-        r = client.chat.completions.create(
-            model=MODEL_ID,
-            messages=[{"role": "user", "content": prompt_text}],
-            max_tokens=1024,
-            temperature=0.5,
-        )
-        return r.choices[0].message.content or ""
-
-    sdk_llm = RunnableLambda(_call_openrouter)
-
+    # =========================
+    # ⚠️ 프롬프트는 외부에서 주입 (여기서는 내용 생략)
+    # - 환경변수 PROMPT_TEMPLATE 로 주입 가능
+    # - 없으면 최소 기본 프롬프트 사용
+    # =========================
+    PROMPT_TEMPLATE = os.getenv("PROMPT_TEMPLATE", "[Context]\n{context}\n\n[User]\n{question}\n\n[Answer in Korean]:")
     prompt = ChatPromptTemplate.from_template("""
     You are a kind and competent policy recommendation AI for the 'Dajeong' service.
     Based on the user's situation and the provided context, find the most helpful policies and list up to a maximum of 3 in order of recommendation.
@@ -126,39 +129,56 @@ def get_policy_recommendations(user_profile: dict) -> dict:
 
     [Personalized Policy Recommendation Based on Context]
     """)
-
-    to_text = RunnableLambda(lambda x: x.to_string() if hasattr(x, "to_string") else str(x))
-    rag_chain = RunnableParallel(
-        answer=(
-            {"context": retriever | format_docs, "question": RunnablePassthrough()}
-            | prompt
-            | sdk_llm
-            | StrOutputParser()
-            | to_text
-        ),
-        source_documents=retriever,
-    )
-
-    print("\n4. RAG Chain 준비 완료. 이제 AI에게 정책 추천을 요청합니다...")
+    print("\n4. RAG 컨텍스트 구성 완료. 이제 AI에게 정책 추천을 요청합니다...")
 
     try:
-        response = rag_chain.invoke(query_text)
+        # 1) 문서 검색
+        docs = retriever.invoke(query_text)  # List[Document]
+        context_text = format_docs(docs)
+
+        # 2) 프롬프트 문자열 생성
+        # ChatPromptTemplate -> String
+        prompt_text = prompt.format(context=context_text, question=query_text).to_string()
+
+        # 3) Chat Completions 호출
+        r = client.chat.completions.create(
+            model=MODEL_ID,
+            messages=[{"role": "user", "content": prompt_text}],
+            max_tokens=1024,
+            temperature=0.5,
+        )
+        answer_text = (r.choices[0].message.content or "").trim() if hasattr(str, "trim") else (r.choices[0].message.content or "").strip()
+
+        # 4) 결과 정리
+        result["ai_recommendation"] = answer_text
+
+        for doc in docs:
+            content = doc.page_content
+            if len(content) > 200:
+                content = content[:200] + "..."
+            result["source_documents"].append(
+                {
+                    "source": doc.metadata.get("source"),
+                    "title": doc.metadata.get("title"),
+                    "conSeq": doc.metadata.get("conSeq"),
+                    "content": content,
+                }
+            )
+
+        return result
+
     except Exception as e:
         result["error"] = f"LLM 호출 실패: {e}"
         return result
 
-    result["ai_recommendation"] = response.get("answer", "")
 
-    for doc in response.get("source_documents", []):
-        content = doc.page_content
-        if len(content) > 200:
-            content = content[:200] + "..."
-        result["source_documents"].append({
-            "source": doc.metadata.get("source"),
-            "title": doc.metadata.get("title"),
-            "conSeq": doc.metadata.get("conSeq"),
-            "content": content
-        })
+if __name__ == "__main__":
+    # STDIN 으로 user_profile JSON 을 받아 실행하는 래퍼 호환
+    try:
+        raw = json.load(sys.stdin)  # {"user_profile": {...}} 또는 그 자체 dict
+        profile = raw.get("user_profile", raw)
+    except Exception:
+        profile = {}
 
-    return result
-
+    out = get_policy_recommendations(profile if isinstance(profile, dict) else {})
+    print(json.dumps(out, ensure_ascii=False, indent=2))
