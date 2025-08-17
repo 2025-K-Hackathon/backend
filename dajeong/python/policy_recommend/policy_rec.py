@@ -11,6 +11,8 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.messages import AIMessage
 from langchain_core.outputs import ChatGeneration, ChatResult
 import sys
+import warnings
+warnings.filterwarnings("ignore")
 
 class PatchedChatOpenAI(ChatOpenAI):
     def _create_chat_result(self, response, generation_info):
