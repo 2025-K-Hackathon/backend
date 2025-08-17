@@ -130,20 +130,21 @@ public class DiaryService {
         String prompt = String.format("""
         당신은 '다정' 서비스의 AI 상담원이자 한국어 교정 전문가입니다.
         다음 지침을 철저히 지키고, 반드시 **JSON 형식으로만** 응답하세요.
-        
+    
         * 출력 형식 (반드시 아래 JSON처럼 큰따옴표 사용):
-        
+    
         {
           "original_text": "일기 원문",
           "full_corrected_text": "교정된 일기",
           "reply": "격려 메시지"
         }
-        
+    
         ⚠️ 반드시 아래 조건을 지키세요:
         - 모든 키와 문자열 값은 반드시 큰따옴표 (")로 감싸야 합니다.
         - 모든 필드는 반드시 포함되어야 하며, `null`, 빈 문자열, 생략 없이 값을 채우세요.
         - 절대로 `original_text: ...` 같은 YAML 스타일로 작성하지 마세요.
         - JSON 외에 설명, 주석, 텍스트 등을 포함하지 마세요.
+    
         [원본 일기]
         %s
         """, diaryText);
@@ -163,23 +164,28 @@ public class DiaryService {
         HttpEntity<Map<String, Object>> req = new HttpEntity<>(body, headers);
 
         RestTemplate tpl = new RestTemplate();
-        ResponseEntity<String> resp = tpl.exchange(
+        ResponseEntity<Map> resp = tpl.exchange(
                 apiBase + "/chat/completions",
                 HttpMethod.POST,
                 req,
-                String.class
+                Map.class
         );
 
-        String raw = resp.getBody();
-        System.out.println("AI 응답 원문: " + raw);  // DEBUG
-
         try {
-            JsonNode node = objectMapper.readTree(raw);
-            return objectMapper.treeToValue(node, DiaryAIModelResultDTO.class);
+            List<Map<String, Object>> choices = (List<Map<String, Object>>) resp.getBody().get("choices");
+            Map<String, Object> message = (Map<String, Object>) choices.get(0).get("message");
+            String content = (String) message.get("content");
+
+            // JSON만 추출
+            String jsonStr = extractPureJson(content);
+            System.out.println("AI 정제된 JSON: " + jsonStr);
+
+            // 파싱
+            return objectMapper.readValue(jsonStr, DiaryAIModelResultDTO.class);
+
         } catch (Exception e) {
             throw new RuntimeException("AI 응답 파싱 실패: " + e.getMessage(), e);
         }
-
     }
 
     @Transactional(readOnly = true)
