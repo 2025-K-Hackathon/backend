@@ -3,16 +3,17 @@ import json
 from datetime import datetime
 from dotenv import load_dotenv
 
-from langchain_openai import ChatOpenAI, OpenAIEmbeddings
-# 로컬 임베딩 사용
-from langchain_community.embeddings import SentenceTransformerEmbeddings
+# 임베딩은 OpenAI 호환 엔드포인트 사용
+from langchain_openai import OpenAIEmbeddings
 from langchain_chroma import Chroma
 
 from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.runnables import (
+    RunnableParallel,
+    RunnablePassthrough,
+    RunnableLambda,
+)
 from openai import OpenAI
-from langchain_core.runnables import RunnableLambda
-
-from langchain_core.output_parsers import StrOutputParser
 
 
 def format_docs(docs):
@@ -27,6 +28,7 @@ def get_age(birth_year):
         return datetime.now().year - int(birth_year)
     except Exception:
         return -1
+
 
 
 def get_policy_recommendations(user_profile: dict) -> dict:
@@ -45,11 +47,6 @@ def get_policy_recommendations(user_profile: dict) -> dict:
         "timestamp": datetime.now().isoformat()
     }
 
-    headers = {
-        "HTTP-Referer": os.getenv("OR_REFERER", "https://local"),
-        "X-Title": os.getenv("OR_TITLE", "Dajeong"),
-    }
-
     # DB 경로: 환경변수 우선, 없으면 기본 폴더
     DB_DIRECTORY = os.getenv("DB_DIRECTORY", "./policy_chroma_db")
     if not os.path.exists(DB_DIRECTORY):
@@ -59,9 +56,8 @@ def get_policy_recommendations(user_profile: dict) -> dict:
     print("로컬 임베딩 모델을 로드합니다...")
     embeddings = OpenAIEmbeddings(
         model=os.getenv("EMBED_MODEL", "text-embedding-3-small"),
-        api_key=os.getenv("OPENAI_API_KEY"),
-        base_url=os.getenv("API_BASE"),
-        default_headers=headers,
+        api_key=API_KEY,
+        base_url=API_BASE,
     )
 
     db = Chroma(persist_directory=DB_DIRECTORY, embedding_function=embeddings)
@@ -90,15 +86,19 @@ def get_policy_recommendations(user_profile: dict) -> dict:
         search_kwargs={"k": 3, "filter": metadata_filter}
     )
 
-    llm = ChatOpenAI(
-        model=MODEL_ID,
-        api_key=API_KEY,
-        base_url=API_BASE,
-        temperature=0.5,
-        max_tokens=1024,
-        timeout=30,
-        max_retries=3,
-    )
+    client = OpenAI(api_key=API_KEY, base_url=API_BASE)
+
+    def _call_openrouter(prompt_text: str) -> str:
+        r = client.chat.completions.create(
+            model=MODEL_ID,
+            messages=[{"role": "user", "content": prompt_text}],
+            max_tokens=1024,
+            temperature=0.5,
+        )
+        return r.choices[0].message.content or ""
+
+    sdk_llm = RunnableLambda(_call_openrouter)
+
     prompt = ChatPromptTemplate.from_template("""
     You are a kind and competent policy recommendation AI for the 'Dajeong' service.
     Based on the user's situation and the provided context, find the most helpful policies and list up to a maximum of 3 in order of recommendation.
