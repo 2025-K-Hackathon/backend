@@ -56,7 +56,7 @@ def get_policy_recommendations(user_profile: dict) -> dict:
 
     print("로컬 임베딩 모델을 로드합니다...")
     embeddings = SentenceTransformerEmbeddings(
-        model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+        model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L3-v2"
     )
 
     db = Chroma(persist_directory=DB_DIRECTORY, embedding_function=embeddings)
