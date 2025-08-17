@@ -47,7 +47,11 @@ public class PolicyRecommendationService {
     @Transactional(readOnly = true)
     public Map<String, Object> getLatestAsMap(User user) {
         return repository.findFirstByUserOrderByRecommendDateDesc(user)
-                .map(rec -> fromJson(rec.getPayloadJson()))
+                .map(rec -> {
+                    Map<String,Object> m = fromJson(rec.getPayloadJson());
+                    ensureUrlsInSourceDocs(m); // ▼ 추가
+                    return m;
+                })
                 .orElse(Map.of("message", "추천 결과가 없습니다."));
     }
 
@@ -56,6 +60,29 @@ public class PolicyRecommendationService {
         return repository.findByUserAndRecommendDate(user, date)
                 .map(rec -> fromJson(rec.getPayloadJson()))
                 .orElse(Map.of("message", "해당 날짜에 추천 결과가 없습니다."));
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void ensureUrlsInSourceDocs(Map<String, Object> resp) {
+        Object src = resp.get("source_documents");
+        if (!(src instanceof Iterable<?> docs)) return;
+        for (Object o : docs) {
+            if (!(o instanceof Map<?,?>)) continue;
+            Map<String,Object> doc = (Map<String,Object>) o;
+            Object url = doc.get("url");
+            if (url != null && !String.valueOf(url).isBlank()) continue;
+            Object conSeq  = doc.get("conSeq");
+            Object menuSeq = doc.get("menuSeq");
+            String built = buildBoardUrl(conSeq, menuSeq);
+            if (built != null) doc.put("url", built);
+        }
+    }
+
+    private static String buildBoardUrl(Object conSeq, Object menuSeq) {
+        if (conSeq == null) return null;
+        String base = "https://www.liveinkorea.kr/portal/KOR/board/boardContentViewML.do?conSeq=" + conSeq;
+        if (menuSeq != null) base += "&menuSeq=" + menuSeq;
+        return base;
     }
 
     private String toJson(Map<String, Object> map) {

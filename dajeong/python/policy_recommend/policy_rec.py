@@ -24,6 +24,15 @@ class PatchedChatOpenAI(ChatOpenAI):
             )
         return super()._create_chat_result(response, generation_info)
 
+# 정책 추천 url
+def build_board_url(conseq: str | None, menuseq: str | None = None) -> str | None:
+    if not conseq:
+        return None
+    base = "https://www.liveinkorea.kr/portal/KOR/board/boardContentViewML.do"
+    qs = f"conSeq={conseq}"
+    if menuseq:
+        qs += f"&menuSeq={menuseq}"
+    return f"{base}?{qs}"
 
 # 검색된 문서(Document 객체)들을 하나의 깔끔한 문자열로 합치는 함수
 def format_docs(docs):
@@ -57,13 +66,13 @@ def get_policy_recommendations(user_profile: dict) -> dict:
         result["error"] = f"오류: '{DB_DIRECTORY}' 데이터베이스 폴더를 찾을 수 없습니다."
         return result
 
-    print("로컬 임베딩 모델을 로드합니다...")
+    sys.stderr.write("로컬 임베딩 모델을 로드합니다...\n")
     embeddings = SentenceTransformerEmbeddings(
         model_name="snunlp/KR-SBERT-V40K-klueNLI-augSTS"
     )
 
     db = Chroma(persist_directory=DB_DIRECTORY, embedding_function=embeddings)
-    print("\n2. ChromaDB 로드 완료!")
+    sys.stderr.write("2. ChromaDB 로드 완료!\n")
 
     search_regions = ["전국", user_profile["region"]]
 
@@ -82,8 +91,8 @@ def get_policy_recommendations(user_profile: dict) -> dict:
     else:
         query_text = base_query + " 자녀는 없습니다."
 
-    print(f"\n3. 생성된 AI 검색어: \"{query_text}\"")
-    print(f"   적용된 DB 필터: {metadata_filter}")
+    sys.stderr.write(f"3. 생성된 AI 검색어: \"{query_text}\"\n")
+    sys.stderr.write(f"   적용된 DB 필터: {metadata_filter}\n")
 
     # DB에서 필터와 검색어에 맞는 문서를 찾아오는 retriever 설정
     retriever = db.as_retriever(
@@ -139,20 +148,28 @@ def get_policy_recommendations(user_profile: dict) -> dict:
         source_documents=retriever, #  retriever를 통해 찾은 원본 문서를 그대로 반환
     )
 
-    print("\n4. RAG Chain 준비 완료. 이제 AI에게 정책 추천을 요청합니다...")
+    sys.stderr.write("4. RAG Chain 준비 완료. 이제 AI에게 정책 추천을 요청합니다...\n")
 
     response = rag_chain.invoke(query_text)
 
     # AI 추천 결과 저장
     result["ai_recommendation"] = response["answer"]
 
-    # 소스 문서 정보 저장
     for doc in response["source_documents"]:
+        conseq = doc.metadata.get("conSeq")
+        menuseq = doc.metadata.get("menuSeq")
+        date = doc.metadata.get("date")
+
         doc_info = {
-            "source": doc.metadata.get('source'),
-            "title": doc.metadata.get('title'),
-            "conSeq": doc.metadata.get('conSeq'),
-            "content": doc.page_content[:200] + "..." if len(doc.page_content) > 200 else doc.page_content  # 내용 미리보기
+            "source": doc.metadata.get("source"),
+            "title": doc.metadata.get("title"),
+            "conSeq": conseq,
+            "url": build_board_url(conseq, menuseq),
+            "date": date,
+            "content": (
+                doc.page_content[:200] + "..."
+                if len(doc.page_content) > 200 else doc.page_content
+            ),
         }
         result["source_documents"].append(doc_info)
 
