@@ -96,7 +96,6 @@ def get_policy_recommendations(user_profile: dict) -> dict:
         max_tokens=1024,
         timeout=30,
         max_retries=3,
-        default_headers=headers,
     )
     prompt = ChatPromptTemplate.from_template("""
     You are a kind and competent policy recommendation AI for the 'Dajeong' service.
