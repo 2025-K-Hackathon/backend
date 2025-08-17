@@ -1,10 +1,11 @@
 import os
+import sys
 import json
 from datetime import datetime
 from dotenv import load_dotenv
 
-# 임베딩: OpenAI 호환 엔드포인트 (OpenRouter 등)
-from langchain_openai import OpenAIEmbeddings
+# ▼ 로컬 임베딩 (외부 API 불필요)
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
 
 from langchain_core.prompts import ChatPromptTemplate
@@ -27,7 +28,8 @@ def get_age(birth_year):
 
 def get_policy_recommendations(user_profile: dict) -> dict:
     """
-    Runnable 체인을 제거하고, 리트리버 → 프롬프트 문자열 → Chat Completions 직접 호출로 단순화.
+    로컬 임베딩(HuggingFaceEmbeddings) + Chroma + OpenAI(Chat) 단일 호출.
+    외부 임베딩 API 미사용 → '.data' 에러 제거.
     """
     load_dotenv()
 
@@ -44,27 +46,30 @@ def get_policy_recommendations(user_profile: dict) -> dict:
         "timestamp": datetime.now().isoformat(),
     }
 
-    # DB 경로: 환경변수 우선, 없으면 기본 폴더
+    # DB 경로 확인
     DB_DIRECTORY = os.getenv("DB_DIRECTORY", "./policy_chroma_db")
     if not os.path.exists(DB_DIRECTORY):
         result["error"] = f"오류: '{DB_DIRECTORY}' 데이터베이스 폴더를 찾을 수 없습니다."
         return result
 
-    # OpenRouter 권장 헤더 (없어도 되지만 있으면 좋음)
-    headers = {
-        "HTTP-Referer": os.getenv("OR_REFERER", "https://github.com"),
-        "X-Title": os.getenv("OR_TITLE", "Dajeong"),
-    }
-
-    print("로컬 임베딩 모델을 로드합니다...")
-    embeddings = OpenAIEmbeddings(
-        model=os.getenv("EMBED_MODEL", "openai/text-embedding-3-small"),
-        api_key=API_KEY,
-        base_url=API_BASE,
-        default_headers=headers,
+    print("로컬 임베딩 모델을 로드합니다... (HuggingFaceEmbeddings)")
+    # 한국어/다국어에 무난한 경량 모델 예시 (필요시 환경변수로 바꾸세요)
+    HF_EMBED_MODEL = os.getenv(
+        "HF_EMBED_MODEL",
+        "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
     )
+    try:
+        embeddings = HuggingFaceEmbeddings(model_name=HF_EMBED_MODEL)
+    except Exception as e:
+        result["error"] = f"로컬 임베딩 로드 실패: {e}"
+        return result
 
-    db = Chroma(persist_directory=DB_DIRECTORY, embedding_function=embeddings)
+    try:
+        db = Chroma(persist_directory=DB_DIRECTORY, embedding_function=embeddings)
+    except Exception as e:
+        result["error"] = f"Chroma 초기화 실패: {e}"
+        return result
+
     print("\n2. ChromaDB 로드 완료!")
 
     # 지역 필터
@@ -93,14 +98,14 @@ def get_policy_recommendations(user_profile: dict) -> dict:
         search_kwargs={"k": 3, "filter": metadata_filter},
     )
 
-    # OpenAI(OpenRouter) 클라이언트
+    # Chat 호출 클라이언트 (OpenRouter 헤더 포함)
+    headers = {
+        "HTTP-Referer": os.getenv("OR_REFERER", "https://github.com"),
+        "X-Title": os.getenv("OR_TITLE", "Dajeong"),
+    }
     client = OpenAI(api_key=API_KEY, base_url=API_BASE, default_headers=headers)
 
-    # =========================
-    # ⚠️ 프롬프트는 외부에서 주입 (여기서는 내용 생략)
-    # - 환경변수 PROMPT_TEMPLATE 로 주입 가능
-    # - 없으면 최소 기본 프롬프트 사용
-    # =========================
+    # 프롬프트 (환경변수로 교체 가능)
     PROMPT_TEMPLATE = os.getenv("PROMPT_TEMPLATE", "[Context]\n{context}\n\n[User]\n{question}\n\n[Answer in Korean]:")
     prompt = ChatPromptTemplate.from_template("""
     You are a kind and competent policy recommendation AI for the 'Dajeong' service.
@@ -129,15 +134,16 @@ def get_policy_recommendations(user_profile: dict) -> dict:
 
     [Personalized Policy Recommendation Based on Context]
     """)
+    prompt = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
+
     print("\n4. RAG 컨텍스트 구성 완료. 이제 AI에게 정책 추천을 요청합니다...")
 
     try:
-        # 1) 문서 검색
+        # 1) 문서 검색 (여기서 임베딩이 호출되지만 로컬이라 네트워크 이슈 없음)
         docs = retriever.invoke(query_text)  # List[Document]
         context_text = format_docs(docs)
 
         # 2) 프롬프트 문자열 생성
-        # ChatPromptTemplate -> String
         prompt_text = prompt.format(context=context_text, question=query_text).to_string()
 
         # 3) Chat Completions 호출
@@ -147,7 +153,8 @@ def get_policy_recommendations(user_profile: dict) -> dict:
             max_tokens=1024,
             temperature=0.5,
         )
-        answer_text = (r.choices[0].message.content or "").trim() if hasattr(str, "trim") else (r.choices[0].message.content or "").strip()
+        content = r.choices[0].message.content or ""
+        answer_text = content.strip()
 
         # 4) 결과 정리
         result["ai_recommendation"] = answer_text
