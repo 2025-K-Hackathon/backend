@@ -51,6 +51,6 @@ openai:
 
 dajeong:
   python:
-    executable: "D:/projects/backend/dajeong/.venv/Scripts/python.exe"
+    executable: "/mnt/venvs/dajeong/bin/python"
     base-dir: "./python"
     wrapper-dir: "./python/wrappers"

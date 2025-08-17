@@ -42,9 +42,9 @@ def get_policy_recommendations(user_profile: dict) -> dict:
         return result
 
     print("로컬 임베딩 모델을 로드합니다...")
-    embeddings = SentenceTransformerEmbeddings(
-        model_name="jhgan/ko-sbert-nli"
-    )
+    embeddings = SentenceTransformerEmbeddings(model_name="intfloat/multilingual-e5-small")
+
+
 
     db = Chroma(persist_directory=DB_DIRECTORY, embedding_function=embeddings)
     print("\n2. ChromaDB 로드 완료!")
@@ -99,57 +99,4 @@ def get_policy_recommendations(user_profile: dict) -> dict:
 
     Your mission is to answer ONLY based on the information found within the provided 'Context'.
     You must NEVER mention, guess, or create information that is not explicitly stated in the 'Context'.
-    If the 'Context' contains no relevant information for the user's situation, you must honestly reply with the exact following Korean sentence: "죄송하지만, 현재 사용자님의 상황에 꼭 맞는 정책 정보를 찾지 못했습니다."
-
-    [Context]
-    {context}
-
-    [User Situation]
-    {question}
-
-    [Personalized Policy Recommendation Based on Context]
-
-    """)
-
-    rag_chain = RunnableParallel(
-        answer=(
-            {"context": retriever | format_docs, "question": RunnablePassthrough()}
-            | prompt
-            | llm
-            | StrOutputParser()
-        ),
-        source_documents=retriever, #  retriever를 통해 찾은 원본 문서를 그대로 반환
-    )
-
-    print("\n4. RAG Chain 준비 완료. 이제 AI에게 정책 추천을 요청합니다...")
-
-    response = rag_chain.invoke(query_text)
-
-    # AI 추천 결과 저장
-    result["ai_recommendation"] = response["answer"]
-
-    # 소스 문서 정보 저장
-    for doc in response["source_documents"]:
-        doc_info = {
-            "source": doc.metadata.get('source'),
-            "title": doc.metadata.get('title'),
-            "conSeq": doc.metadata.get('conSeq'),
-            "content": doc.page_content[:200] + "..." if len(doc.page_content) > 200 else doc.page_content  # 내용 미리보기
-        }
-        result["source_documents"].append(doc_info)
-
-    return result
-
-if __name__ == "__main__":
-    # 테스트할 가상 사용자 프로필 정의
-    sample_user_profile = {
-        "name": "린 응우엔",
-        "nationality": "베트남",
-        "age": 1998,
-        "region": "서울",
-        "married": True,
-        "hasChildren": True,
-        "childAge": 2020,
-    }
-    result = get_policy_recommendations(sample_user_profile)
-    print(json.dumps(result, ensure_ascii=False, indent=2))
+    If the 'Context' contains no relevant information for the user's situation, you must honestly reply with the exact following Korean sentence: "죄송하지만, 현재 사용자님의 상황에 꼭 �
