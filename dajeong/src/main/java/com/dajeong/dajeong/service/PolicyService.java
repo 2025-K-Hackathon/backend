@@ -46,24 +46,19 @@ public class PolicyService {
     private String extractParsableJsonBlock(String s) {
         if (s == null || s.isEmpty()) return null;
 
-        final int lastClose = s.lastIndexOf('}');
-        if (lastClose < 0) return null;
+        int firstOpen = s.indexOf('{');
+        int lastClose = s.lastIndexOf('}');
+        if (firstOpen < 0 || lastClose < 0 || lastClose <= firstOpen) return null;
 
-        // 뒤에서부터 '{' 위치를 찾아가며 파싱 시도
-        for (int i = lastClose; i >= 0; i--) {
-            if (s.charAt(i) == '{') {
-                String candidate = s.substring(i, lastClose + 1);
-                try {
-                    // 유효성만 확인 (트리 파싱); 성공하면 반환
-                    mapper.readTree(candidate);
-                    return candidate;
-                } catch (Exception ignore) {
-                    // 계속 이전 '{'로 이동
-                }
-            }
+        String candidate = s.substring(firstOpen, lastClose + 1);
+        try {
+            mapper.readTree(candidate);  // 유효성 확인
+            return candidate;
+        } catch (Exception e) {
+            return null;
         }
-        return null;
     }
+
 
     private static String previewForError(String s, int maxLen) {
         if (s == null) return "<null>";
