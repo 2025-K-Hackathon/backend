@@ -140,16 +140,3 @@ def get_policy_recommendations(user_profile: dict) -> dict:
 
     return result
 
-if __name__ == "__main__":
-    # 테스트할 가상 사용자 프로필 정의
-    sample_user_profile = {
-        "name": "린 응우엔",
-        "nationality": "베트남",
-        "age": 1998,
-        "region": "서울",
-        "married": True,
-        "hasChildren": True,
-        "childAge": 2020,
-    }
-    result = get_policy_recommendations(sample_user_profile)
-    print(json.dumps(result, ensure_ascii=False, indent=2))
