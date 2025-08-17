@@ -106,9 +106,10 @@ public class PostController {
         return ResponseEntity.ok(dto);
     }
     @GetMapping("/{id}/detail")
-    public ResponseEntity<?> getPostDetail(@PathVariable Long id) {
+    public ResponseEntity<?> getPostDetail(@PathVariable Long id, HttpSession session) {
         try {
-            PostDetailResponseDTO detail = postService.getPostDetail(id);
+            User user = (User) session.getAttribute("user");
+            PostDetailResponseDTO detail = postService.getPostDetail(id, user);
             return ResponseEntity.ok(detail);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(404).body(e.getMessage());
