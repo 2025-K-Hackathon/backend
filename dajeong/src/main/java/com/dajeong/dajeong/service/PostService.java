@@ -155,6 +155,7 @@ public class PostService {
                     post.getRegion().getDescription(),
                     post.getAgeGroup().getDescription(),
                     post.getLikeCount(),
+                    post.getAuthor().getId(),           
                     post.getCreatedAt(),
                     post.getComments().size(),
                     post.getImageUrls().stream()
@@ -191,6 +192,7 @@ public class PostService {
                 post.getRegion().getDescription(),
                 post.getAgeGroup().getDescription(),
                 post.getLikeCount(),
+                post.getAuthor().getId(),           
                 post.getCreatedAt(),
                 post.getComments().size(),
                 post.getImageUrls().stream()
@@ -201,7 +203,7 @@ public class PostService {
 
 
     @Transactional(readOnly = true)
-    public PostDetailResponseDTO getPostDetail(Long id) {
+    public PostDetailResponseDTO getPostDetail(Long id, User currentUser) {
         Post post = postRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("해당 게시글이 없습니다"));
         String baseUrl = "https://dajeong.shop";
@@ -210,11 +212,19 @@ public class PostService {
                 // 이미 절대경로면 그대로 두고, 상대경로면 baseUrl 붙임
                 .map(u -> (u.startsWith("https://")) ? u : baseUrl + u)
                 .collect(Collectors.toList());
+                
+        // 좋아요 여부 확인
+        boolean liked = false;
+        if (currentUser != null) {
+            liked = postLikeRepository.existsByUserAndPost(currentUser, post);
+        }
+
         return PostDetailResponseDTO.builder()
                 .id(post.getId())
                 .title(post.getTitle())
                 .content(post.getContent())
                 .authorName(post.getAuthor().getName())
+                .authorId(post.getAuthor().getId())
                 .nationality(post.getNationality().getDescription())
                 .region(post.getRegion().getDescription())
                 .ageGroup(post.getAgeGroup().getDescription())
@@ -222,6 +232,7 @@ public class PostService {
                 .commentCount(post.getComments().size())
                 .imageUrls(absoluteUrls)
                 .createdAt(post.getCreatedAt())
+                .likedByCurrentUser(liked)
                 .build();
     }
 }

@@ -19,6 +19,7 @@ public class PostResponseDTO {
     private String region;
     private String ageGroup;
     private int likeCount;
+    private Long authorId;
     private LocalDateTime createdAt;
     private int commentCount;
     private List<String> imageUrls;
