@@ -26,30 +26,42 @@ public class PolicyService {
         this.titleUrlMap = loadTitleUrlMap();
     }
 
-    @SuppressWarnings("unchecked")
     private Map<String, String> loadTitleUrlMap() {
-        try {
-            Map<String, String> map1 = readSingleMappingFile("policies/notices_2025.json");
-            Map<String, String> map2 = readSingleMappingFile("policies/타기관_notices_2025.json");
+        Map<String, String> map1 = readSingleMappingFile("policies/notices_2025.json");
+        Map<String, String> map2 = readSingleMappingFile("policies/타기관_notices_2025.json");
 
-            // 두 맵을 병합 (중복 title이 있으면 map2 우선)
-            map1.putAll(map2);
-            return map1;
+        // 두 맵을 병합 (중복 title이 있으면 map2 우선)
+        map1.putAll(map2);
+        return map1;
+    }
 
+
+    private Map<String, String> readSingleMappingFile(String path) {
+        try (InputStream is = getClass().getClassLoader().getResourceAsStream(path)) {
+            if (is == null) {
+                throw new FileNotFoundException("리소스를 찾을 수 없습니다: " + path);
+            }
+
+            List<Map<String, Object>> rawList = mapper.readValue(is, new TypeReference<>() {});
+            return rawList.stream()
+                    .filter(item -> item.containsKey("title") && item.containsKey("attachments"))
+                    .collect(Collectors.toMap(
+                            item -> item.get("title").toString(),
+                            item -> {
+                                // attachments가 리스트인 경우 첫 번째 url 가져오기
+                                List<?> attachments = (List<?>) item.get("attachments");
+                                if (attachments != null && !attachments.isEmpty() && attachments.get(0) instanceof Map<?, ?>) {
+                                    Object url = ((Map<?, ?>) attachments.get(0)).get("url");
+                                    return url != null ? url.toString() : "";
+                                }
+                                return "";
+                            }
+                    ));
         } catch (IOException e) {
             throw new RuntimeException("URL mapping 파일 로드 실패", e);
         }
     }
 
-    private Map<String, String> readSingleMappingFile(String resourcePath) throws IOException {
-        InputStream is = getClass().getClassLoader().getResourceAsStream(resourcePath);
-        if (is == null) throw new FileNotFoundException("Mapping file not found: " + resourcePath);
-
-        List<Map<String, String>> list = mapper.readValue(is, new TypeReference<>() {});
-        return list.stream()
-                .filter(m -> m.containsKey("title") && m.containsKey("url"))
-                .collect(Collectors.toMap(m -> m.get("title").trim(), m -> m.get("url").trim()));
-    }
 
 
     public Map<String, Object> recommend(Map<String, Object> userProfile) {
