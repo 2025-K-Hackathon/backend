@@ -9,7 +9,9 @@ from langchain_community.embeddings import SentenceTransformerEmbeddings
 from langchain_chroma import Chroma
 
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.runnables import RunnableParallel, RunnablePassthrough
+from openai import OpenAI
+from langchain_core.runnables import RunnableLambda
+
 from langchain_core.output_parsers import StrOutputParser
 
 
