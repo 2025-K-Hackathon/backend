@@ -55,7 +55,7 @@ def get_policy_recommendations(user_profile: dict) -> dict:
 
     print("로컬 임베딩 모델을 로드합니다...")
     embeddings = OpenAIEmbeddings(
-        model=os.getenv("EMBED_MODEL", "text-embedding-3-small"),
+        model=os.getenv("EMBED_MODEL", "openai/text-embedding-3-small"),
         api_key=API_KEY,
         base_url=API_BASE,
     )
@@ -127,12 +127,14 @@ def get_policy_recommendations(user_profile: dict) -> dict:
     [Personalized Policy Recommendation Based on Context]
     """)
 
+    to_text = RunnableLambda(lambda x: x.to_string() if hasattr(x, "to_string") else str(x))
     rag_chain = RunnableParallel(
         answer=(
             {"context": retriever | format_docs, "question": RunnablePassthrough()}
             | prompt
             | sdk_llm
             | StrOutputParser()
+            | to_text
         ),
         source_documents=retriever,
     )
