@@ -164,27 +164,30 @@ public class DiaryService {
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(apiKey);
         headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setAccept(List.of(MediaType.APPLICATION_JSON));
         HttpEntity<Map<String, Object>> req = new HttpEntity<>(body, headers);
 
         RestTemplate tpl = new RestTemplate();
-        ResponseEntity<Map> resp = tpl.exchange(
+        ResponseEntity<String> resp = tpl.exchange(
                 apiBase + "/chat/completions",
                 HttpMethod.POST,
                 req,
-                Map.class
+                String.class
         );
 
+        String raw = resp.getBody();
+        System.out.println("AI 응답 원문: " + raw);  // DEBUG
+
         try {
-            Map<?, ?> choice  = ((List<Map<?, ?>>) resp.getBody().get("choices")).get(0);
-            Map<?, ?> message = (Map<?, ?>) choice.get("message");
-            String content    = (String) message.get("content");
-            String json       = extractPureJson(content);
+            // 1. JSON 본문만 추출
+            String json = extractPureJson(raw);
 
+            // 2. 파싱
             return objectMapper.readValue(json, DiaryAIModelResultDTO.class);
-
         } catch (Exception e) {
             throw new RuntimeException("AI 응답 파싱 실패: " + e.getMessage(), e);
         }
+
     }
 
     @Transactional(readOnly = true)
