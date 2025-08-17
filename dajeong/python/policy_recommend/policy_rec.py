@@ -131,7 +131,7 @@ def get_policy_recommendations(user_profile: dict) -> dict:
         answer=(
             {"context": retriever | format_docs, "question": RunnablePassthrough()}
             | prompt
-            | llm
+            | sdk_llm
             | StrOutputParser()
         ),
         source_documents=retriever,
