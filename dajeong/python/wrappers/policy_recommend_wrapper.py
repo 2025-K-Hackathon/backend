@@ -14,7 +14,7 @@ def main():
     raw = sys.stdin.read()
     user_profile = json.loads(raw) if raw else {}
     result = get_policy_recommendations(user_profile)
-    print(json.dumps(result, ensure_ascii=False))
+    print(json.dumps(result, ensure_ascii=False, indent=None, separators=(",", ":")))
 
 if __name__ == "__main__":
     main()

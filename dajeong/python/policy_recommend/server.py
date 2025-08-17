@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from .policy_rec import get_policy_recommendations, _get_db, _get_embeddings
+from .policy_rec import get_policy_recommendations, _get_db
 
 app = FastAPI()
 
@@ -15,7 +15,6 @@ class Profile(BaseModel):
 
 @app.on_event("startup")
 async def warmup():
-    _get_embeddings()           # 임베딩 모델 메모리에 1회 로드
     if _get_db() is None:
         raise RuntimeError("DB 폴더가 없습니다. DB_DIRECTORY 확인")
 
