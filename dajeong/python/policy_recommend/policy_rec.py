@@ -10,6 +10,7 @@ from langchain_core.runnables import RunnableParallel, RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.messages import AIMessage
 from langchain_core.outputs import ChatGeneration, ChatResult
+import sys
 
 class PatchedChatOpenAI(ChatOpenAI):
     def _create_chat_result(self, response, generation_info):
