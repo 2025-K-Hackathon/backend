@@ -72,6 +72,7 @@ def load_and_process_json(file_path: str, llm: ChatOpenAI) -> list:
             "title": title,
             "date": policy.get('date', ''),
             "region": extracted_region,
+            "url": policy.get('url', ''),
             "attachment_urls": ", ".join([att.get('url', '') for att in policy.get('attachments', [])])
         }
 
@@ -91,11 +92,12 @@ def main():
 
     extraction_llm = ChatOpenAI(model_name=MODEL_ID, openai_api_key=API_KEY, openai_api_base=API_BASE, temperature=0)
 
-    JSON_FILE_PATH = "crawling/notices_2025.json"
+    JSON_FILE_PATH = "python/crawling/notices_2025(2).json"
     if not os.path.exists(JSON_FILE_PATH):
         print(f"오류: '{JSON_FILE_PATH}' 파일을 찾을 수 없습니다.")
         return
     
+
     DB_DIRECTORY = "./policy_chroma_db"
 
     # # 기존 DB 폴더 삭제 - 새로 만들기 위함
