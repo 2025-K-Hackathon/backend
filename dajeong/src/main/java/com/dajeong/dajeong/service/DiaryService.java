@@ -176,17 +176,34 @@ public class DiaryService {
             Map<String, Object> message = (Map<String, Object>) choices.get(0).get("message");
             String content = (String) message.get("content");
 
+            System.out.println("🟡 GPT 응답 원문 ↓↓↓");
+            System.out.println(content);
+
             // JSON만 추출
             String jsonStr = extractPureJson(content);
-            System.out.println("AI 정제된 JSON: " + jsonStr);
+            System.out.println("🟢 추출된 JSON ↓↓↓");
+            System.out.println(jsonStr);
 
             // 파싱
-            return objectMapper.readValue(jsonStr, DiaryAIModelResultDTO.class);
+            DiaryAIModelResultDTO parsed = objectMapper.readValue(jsonStr, DiaryAIModelResultDTO.class);
+
+            // 각 필드 로그 출력
+            System.out.println("🔵 originalText: " + parsed.getOriginalText());
+            System.out.println("🔵 fullCorrectedText: " + parsed.getFullCorrectedText());
+            System.out.println("🔵 reply: " + parsed.getReply());
+
+            // null 필드 확인
+            if (parsed.getOriginalText() == null || parsed.getFullCorrectedText() == null || parsed.getReply() == null) {
+                throw new RuntimeException("GPT 응답에 누락된 필드가 있습니다. 응답 내용 확인 필요:\n" + jsonStr);
+            }
+
+            return parsed;
 
         } catch (Exception e) {
             throw new RuntimeException("AI 응답 파싱 실패: " + e.getMessage(), e);
         }
     }
+
 
     @Transactional(readOnly = true)
     public String translateReply(User user, Long diaryId) {
