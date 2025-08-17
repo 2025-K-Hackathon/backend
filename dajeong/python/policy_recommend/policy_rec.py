@@ -8,6 +8,22 @@ from langchain_community.vectorstores import Chroma
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableParallel, RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
+from langchain_core.messages import AIMessage
+from langchain_core.outputs import ChatGeneration, ChatResult
+
+class PatchedChatOpenAI(ChatOpenAI):
+    def _create_chat_result(self, response, generation_info):
+        if isinstance(response, str):
+            return ChatResult(
+                generations=[
+                    ChatGeneration(
+                        message=AIMessage(content=response)
+                    )
+                ],
+                llm_output=generation_info or {}
+            )
+        return super()._create_chat_result(response, generation_info)
+
 
 # 검색된 문서(Document 객체)들을 하나의 깔끔한 문자열로 합치는 함수
 def format_docs(docs):
@@ -75,13 +91,13 @@ def get_policy_recommendations(user_profile: dict) -> dict:
         search_kwargs={'k': 3, 'filter': metadata_filter}
     )
 
-    llm = ChatOpenAI(
+    llm = PatchedChatOpenAI(
         model_name=MODEL_ID,
         openai_api_key=API_KEY,
         openai_api_base=API_BASE,
         temperature=0.5,
         max_tokens=1024,
-        streaming=False
+        streaming=False 
     )
 
     prompt = ChatPromptTemplate.from_template("""
