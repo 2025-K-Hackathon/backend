@@ -50,7 +50,8 @@ public class PolicyController {
                 );
             }
             Map<String, Object> resp = policyService.recommend(profile);
-
+            System.out.println("[FastAPI 응답 전체 확인]");
+            System.out.println(new com.fasterxml.jackson.databind.ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(resp));
             LocalDate todaySeoul = LocalDate.now(ZoneId.of("Asia/Seoul"));
             recommendationService.saveOrUpdateForDate(user, todaySeoul, resp);
 
