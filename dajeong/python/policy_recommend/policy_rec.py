@@ -53,11 +53,16 @@ def get_policy_recommendations(user_profile: dict) -> dict:
         result["error"] = f"오류: '{DB_DIRECTORY}' 데이터베이스 폴더를 찾을 수 없습니다."
         return result
 
+    headers = {
+        "HTTP-Referer": os.getenv("OR_REFERER", "https://github.com"),
+        "X-Title": os.getenv("OR_TITLE", "Dajeong"),
+    }
     print("로컬 임베딩 모델을 로드합니다...")
     embeddings = OpenAIEmbeddings(
         model=os.getenv("EMBED_MODEL", "openai/text-embedding-3-small"),
         api_key=API_KEY,
         base_url=API_BASE,
+        default_headers=headers,
     )
 
     db = Chroma(persist_directory=DB_DIRECTORY, embedding_function=embeddings)
@@ -132,9 +137,8 @@ def get_policy_recommendations(user_profile: dict) -> dict:
         answer=(
             {"context": retriever | format_docs, "question": RunnablePassthrough()}
             | prompt
-            | sdk_llm
-            | StrOutputParser()
             | to_text
+            | sdk_llm
         ),
         source_documents=retriever,
     )
