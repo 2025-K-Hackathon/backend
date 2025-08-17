@@ -22,6 +22,7 @@ import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -52,8 +53,13 @@ public class DiaryService {
 
 
         List<DiaryAIResponseDTO.Correction> corrections =
-                CorrectionLocator.locate(ai.getOriginalText(),
-                        ai.getFullCorrectedText());
+                CorrectionLocator.locate(
+                        Optional.ofNullable(ai.getOriginalText())
+                                .orElseThrow(() -> new IllegalArgumentException("❗ originalText가 null입니다")),
+                        Optional.ofNullable(ai.getFullCorrectedText())
+                                .orElseThrow(() -> new IllegalArgumentException("❗ fullCorrectedText가 null입니다"))
+                );
+
 
         List<String> incorrects = corrections.stream()
                 .map(DiaryAIResponseDTO.Correction::getIncorrect)
