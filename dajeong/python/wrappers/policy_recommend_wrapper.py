@@ -8,7 +8,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent  # <project-root>/python
 sys.path.append(str(BASE_DIR))
 os.chdir(BASE_DIR)  # ★ 꼭 있어야 상대경로 정상
 
-from policy_recommend.policy_rec import get_policy_recommendations
+from policy_rec import get_policy_recommendations
 
 def main():
     raw = sys.stdin.read()
