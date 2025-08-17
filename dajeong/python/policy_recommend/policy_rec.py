@@ -167,7 +167,7 @@ def get_policy_recommendations(user_profile: dict) -> dict:
             "source": doc.metadata.get("source"),
             "title": doc.metadata.get("title"),
             "conSeq": conseq,
-            "url": build_board_url(conseq, menuseq),
+            "url": doc.metadata.get("url"),
             "date": date,
             "content": (
                 doc.page_content[:200] + "..."
