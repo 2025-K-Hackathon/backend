@@ -16,6 +16,7 @@ import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
+import com.fasterxml.jackson.databind.JsonNode;
 
 import java.time.LocalDate;
 import java.util.Arrays;
@@ -126,32 +127,26 @@ public class DiaryService {
 
     private DiaryAIModelResultDTO analyzeDiaryWithAI(String diaryText) {
 
-        final String FORMAT = """
-        ```json
-        {
-          "type":"object",
-          "properties":{
-            "original_text":{"type":"string"},
-            "full_corrected_text":{"type":"string"},
-            "reply":{"type":"string"}
-          },
-          "required":["original_text","full_corrected_text","reply"]
-        }
-        ```""";
-
-                String prompt = String.format("""
+        String prompt = String.format("""
         당신은 '다정' 서비스의 AI 상담원이자 한국어 교정 전문가입니다.
-        다음 지침을 지켜 JSON 으로만 답하십시오.
+        다음 지침을 철저히 지키고, 반드시 **JSON 형식으로만** 응답하세요.
         
-        1. 'original_text'        : 사용자가 쓴 원본 일기
-        2. 'full_corrected_text'  : 자연스럽게 교정한 문장
-        3. 'reply'                : 1~3문장 공감·격려 답글
+        🧾 출력 형식 (반드시 아래 JSON처럼 큰따옴표 사용):
         
-        %s
+        {
+          "original_text": "...",
+          "full_corrected_text": "...",
+          "reply": "..."
+        }
+        
+        ⚠️ 주의사항:
+        - 모든 키와 문자열 값은 반드시 큰따옴표 (")로 감싸야 합니다.
+        - 절대로 `original_text: ...` 같은 YAML 스타일로 작성하지 마세요.
+        - JSON 외에 설명, 주석, 텍스트 등을 포함하지 마세요.
         
         [원본 일기]
         %s
-        """, FORMAT, diaryText);
+        """, diaryText);
 
 
         Map<String, Object> body = Map.of(
@@ -179,11 +174,8 @@ public class DiaryService {
         System.out.println("AI 응답 원문: " + raw);  // DEBUG
 
         try {
-            // 1. JSON 본문만 추출
-            String json = extractPureJson(raw);
-
-            // 2. 파싱
-            return objectMapper.readValue(json, DiaryAIModelResultDTO.class);
+            JsonNode node = objectMapper.readTree(raw);
+            return objectMapper.treeToValue(node, DiaryAIModelResultDTO.class);
         } catch (Exception e) {
             throw new RuntimeException("AI 응답 파싱 실패: " + e.getMessage(), e);
         }
