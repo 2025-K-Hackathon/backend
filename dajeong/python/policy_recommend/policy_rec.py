@@ -3,7 +3,7 @@ import json
 from datetime import datetime
 from dotenv import load_dotenv
 
-from langchain_openai import ChatOpenAI
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 # 로컬 임베딩 사용
 from langchain_community.embeddings import SentenceTransformerEmbeddings
 from langchain_chroma import Chroma
@@ -55,8 +55,11 @@ def get_policy_recommendations(user_profile: dict) -> dict:
         return result
 
     print("로컬 임베딩 모델을 로드합니다...")
-    embeddings = SentenceTransformerEmbeddings(
-        model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L3-v2"
+    embeddings = OpenAIEmbeddings(
+        model=os.getenv("EMBED_MODEL", "text-embedding-3-small"),
+        api_key=os.getenv("OPENAI_API_KEY"),
+        base_url=os.getenv("API_BASE"),
+        default_headers=headers,
     )
 
     db = Chroma(persist_directory=DB_DIRECTORY, embedding_function=embeddings)
