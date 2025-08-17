@@ -80,7 +80,8 @@ def get_policy_recommendations(user_profile: dict) -> dict:
         openai_api_key=API_KEY,
         openai_api_base=API_BASE,
         temperature=0.5,
-        max_tokens=1024
+        max_tokens=1024,
+        streaming=False
     )
 
     prompt = ChatPromptTemplate.from_template("""
