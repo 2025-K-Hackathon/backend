@@ -1,10 +1,12 @@
 import os
+import os
+import os
 import json
 from datetime import datetime
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
-from langchain_community.embeddings import SentenceTransformerEmbeddings
-from langchain_community.vectorstores import Chroma
+from langchain_openai import OpenAIEmbeddings
+from langchain_chroma import Chroma
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableParallel, RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
@@ -24,7 +26,7 @@ def get_age(birth_year):
 def get_policy_recommendations(user_profile: dict) -> dict:
     load_dotenv()
 
-    API_KEY = os.getenv("API_KEY")
+    API_KEY = os.getenv("OPENAI_API_KEY")
     MODEL_ID = os.getenv("MODEL_ID")
     API_BASE = os.getenv("API_BASE")
     if not API_KEY or not MODEL_ID or not API_BASE:
@@ -45,10 +47,12 @@ def get_policy_recommendations(user_profile: dict) -> dict:
 
     print("로컬 임베딩 모델을 로드합니다...")
     # ⚠️ 가벼운 다국어 모델로 변경(≈118MB)
-    embeddings = SentenceTransformerEmbeddings(
-        model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+    embeddings = OpenAIEmbeddings(
+        model=os.getenv("EMBED_MODEL", "openai/text-embedding-3-small"),
+        api_key=os.getenv("OPENAI_API_KEY"),
+        base_url=os.getenv("API_BASE"),
+        default_headers=headers,   # ← 여기로 이동
     )
-
     db = Chroma(persist_directory=DB_DIRECTORY, embedding_function=embeddings)
     print("\n2. ChromaDB 로드 완료!")
 
@@ -77,13 +81,13 @@ def get_policy_recommendations(user_profile: dict) -> dict:
 
     # 최신 인자 사용 + 안전장치
     llm = ChatOpenAI(
-        model=MODEL_ID,
-        api_key=API_KEY,
-        base_url=API_BASE,
+        model=os.getenv("MODEL_ID", default_headers={"HTTP-Referer": os.getenv("OR_REFERER","https://local"), "X-Title": os.getenv("OR_TITLE","Dajeong")}),
+        api_key=os.getenv("OPENAI_API_KEY"),
+        base_url=os.getenv("API_BASE"),
         temperature=0.5,
         max_tokens=1024,
         timeout=30,
-        max_retries=3,
+        max_retries=3
     )
 
     prompt = ChatPromptTemplate.from_template("""
