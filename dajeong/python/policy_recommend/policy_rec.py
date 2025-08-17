@@ -79,7 +79,8 @@ def get_policy_recommendations(user_profile: dict) -> dict:
         model_name=MODEL_ID,
         openai_api_key=API_KEY,
         openai_api_base=API_BASE,
-        model_kwargs={"temperature": 0.5, "max_tokens": 1024}
+        temperature=0.5,
+        max_tokens=1024
     )
 
     prompt = ChatPromptTemplate.from_template("""
@@ -140,19 +141,6 @@ def get_policy_recommendations(user_profile: dict) -> dict:
 
     return result
 
-if __name__ == "__main__":
-    # 테스트할 가상 사용자 프로필 정의
-    sample_user_profile = {
-        "name": "린 응우엔",
-        "nationality": "베트남",
-        "age": 1998,
-        "region": "서울",
-        "married": True,
-        "hasChildren": True,
-        "childAge": 2020,
-    }
-    result = get_policy_recommendations(sample_user_profile)
-    print(json.dumps(result, ensure_ascii=False, indent=2))
 
 if __name__ == "__main__":
     # STDIN 으로 user_profile JSON 을 받아 실행하는 래퍼 호환
