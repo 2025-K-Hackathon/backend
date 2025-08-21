@@ -1,11 +1,12 @@
 ///글 응답 DTO (작성자, 좋아요 수 포함)
 ///PostResponseDTO.java
-
 package com.dajeong.dajeong.dto;
 
 import lombok.Data;
 import lombok.AllArgsConstructor;
+
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @AllArgsConstructor
@@ -18,5 +19,8 @@ public class PostResponseDTO {
     private String region;
     private String ageGroup;
     private int likeCount;
+    private Long authorId;
     private LocalDateTime createdAt;
+    private int commentCount;
+    private List<String> imageUrls;
 }

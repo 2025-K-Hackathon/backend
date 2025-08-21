@@ -2,6 +2,7 @@
 
 package com.dajeong.dajeong.service;
 
+import com.dajeong.dajeong.dto.PostDetailResponseDTO;
 import com.dajeong.dajeong.dto.PostRequestDTO;
 import com.dajeong.dajeong.dto.PostResponseDTO;
 import com.dajeong.dajeong.entity.Post;
@@ -20,6 +21,16 @@ import java.util.List;
 import java.util.Comparator;
 import java.util.stream.Stream;
 import java.util.stream.Collectors;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.UUID;
+
+import org.springframework.web.multipart.MultipartFile;
 
 
 @Service
@@ -47,16 +58,58 @@ public class PostService {
     }
 
     @Transactional
-    public void createPost(PostRequestDTO dto, User user) {
+    public Long createPost(PostRequestDTO dto, List<MultipartFile> images, User user) {
         Post post = new Post();
         post.setTitle(dto.getTitle());
         post.setContent(dto.getContent());
-        post.setNationality(Nationality.valueOf(dto.getNationality()));
-        post.setRegion(Region.valueOf(dto.getRegion()));
-        post.setAgeGroup(AgeGroup.valueOf(dto.getAgeGroup()));
+        post.setNationality(dto.getNationality());
+        post.setRegion(dto.getRegion());
+        post.setAgeGroup(dto.getAgeGroup());
         post.setAuthor(user);
-        postRepository.save(post);
+
+        // 이미지 저장 및 연결
+        if (images != null && !images.isEmpty()) {
+            if (images.size() > 3) {
+                throw new IllegalArgumentException("이미지는 최대 3장까지 업로드 가능합니다.");
+            }
+            List<String> imageUrls = saveImages(images);
+            post.setImageUrls(imageUrls);
+        }
+
+        Post saved = postRepository.save(post);
+        return saved.getId();
     }
+
+    private List<String> saveImages(List<MultipartFile> images) {
+        List<String> imageUrls = new ArrayList<>();
+        String uploadDir = "src/main/resources/static/images";
+
+        File directory = new File(uploadDir);
+        if (!directory.exists()) {
+            directory.mkdirs();
+        }
+
+        for (MultipartFile image : images) {
+            if (image.isEmpty()) continue;
+
+            String originalFilename = image.getOriginalFilename();
+            String extension = originalFilename.substring(originalFilename.lastIndexOf("."));
+            String uniqueName = UUID.randomUUID().toString() + extension;
+
+            try {
+                Path filepath = Paths.get(uploadDir, uniqueName);
+                Files.write(filepath, image.getBytes());
+
+                // URL은 클라이언트가 접근 가능한 경로로 설정 (예: /images/파일명)
+                imageUrls.add("/images/" + uniqueName);
+            } catch (IOException e) {
+                throw new RuntimeException("이미지 저장 실패", e);
+            }
+        }
+
+        return imageUrls;
+    }
+
 
     @Transactional(readOnly = true)
     public List<PostResponseDTO> getFilteredPosts(
@@ -90,19 +143,26 @@ public class PostService {
                 ? stream.sorted(Comparator.comparing(Post::getLikeCount).reversed()).toList()
                 : stream.sorted(Comparator.comparing(Post::getCreatedAt).reversed()).toList();
 
+        String baseUrl = "https://dajeong.shop";
+
         return filtered.stream()
-                .map(post -> new PostResponseDTO(
-                        post.getId(),
-                        post.getTitle(),
-                        post.getContent(),
-                        post.getAuthor().getName(),
-                        post.getNationality().getDescription(),  // 한글 설명 반환
-                        post.getRegion().getDescription(),
-                        post.getAgeGroup().getDescription(),
-                        post.getLikeCount(),
-                        post.getCreatedAt()
-                ))
-                .collect(Collectors.toList());
+            .map(post -> new PostResponseDTO(
+                    post.getId(),
+                    post.getTitle(),
+                    post.getContent(),
+                    post.getAuthor().getName(),
+                    post.getNationality().getDescription(),
+                    post.getRegion().getDescription(),
+                    post.getAgeGroup().getDescription(),
+                    post.getLikeCount(),
+                    post.getAuthor().getId(),           
+                    post.getCreatedAt(),
+                    post.getComments().size(),
+                    post.getImageUrls().stream()
+                            .map(url -> baseUrl + url)
+                            .collect(Collectors.toList())
+            ))
+            .collect(Collectors.toList());
     }
 
     @Transactional
@@ -120,6 +180,9 @@ public class PostService {
     public PostResponseDTO getPostById(Long id) {
         Post post = postRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("해당 게시글이 없습니다"));
+
+        String baseUrl = "https://dajeong.shop";
+
         return new PostResponseDTO(
                 post.getId(),
                 post.getTitle(),
@@ -129,7 +192,47 @@ public class PostService {
                 post.getRegion().getDescription(),
                 post.getAgeGroup().getDescription(),
                 post.getLikeCount(),
-                post.getCreatedAt()
+                post.getAuthor().getId(),           
+                post.getCreatedAt(),
+                post.getComments().size(),
+                post.getImageUrls().stream()
+                        .map(url -> baseUrl + url)
+                        .collect(Collectors.toList())
         );
+    }
+
+
+    @Transactional(readOnly = true)
+    public PostDetailResponseDTO getPostDetail(Long id, User currentUser) {
+        Post post = postRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("해당 게시글이 없습니다"));
+        String baseUrl = "https://dajeong.shop";
+        List<String> absoluteUrls = (post.getImageUrls() == null ? List.<String>of() : post.getImageUrls())
+                .stream()
+                // 이미 절대경로면 그대로 두고, 상대경로면 baseUrl 붙임
+                .map(u -> (u.startsWith("https://")) ? u : baseUrl + u)
+                .collect(Collectors.toList());
+                
+        // 좋아요 여부 확인
+        boolean liked = false;
+        if (currentUser != null) {
+            liked = postLikeRepository.existsByUserAndPost(currentUser, post);
+        }
+
+        return PostDetailResponseDTO.builder()
+                .id(post.getId())
+                .title(post.getTitle())
+                .content(post.getContent())
+                .authorName(post.getAuthor().getName())
+                .authorId(post.getAuthor().getId())
+                .nationality(post.getNationality().getDescription())
+                .region(post.getRegion().getDescription())
+                .ageGroup(post.getAgeGroup().getDescription())
+                .likeCount(post.getLikeCount())
+                .commentCount(post.getComments().size())
+                .imageUrls(absoluteUrls)
+                .createdAt(post.getCreatedAt())
+                .likedByCurrentUser(liked)
+                .build();
     }
 }

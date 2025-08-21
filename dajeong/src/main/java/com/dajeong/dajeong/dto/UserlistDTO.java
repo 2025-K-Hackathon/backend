@@ -14,8 +14,9 @@ public class UserlistDTO {
     private String username;
     private String name;
     private String nationality;
-    private int age;
+    private Integer age;
+    private Integer childAge;
     private String region;
     private Boolean married;
-    private Boolean hasChildren;
+    private String hasChildren;
 }

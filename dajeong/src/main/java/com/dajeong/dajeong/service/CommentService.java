@@ -1,5 +1,3 @@
-///CommentService.java
-
 package com.dajeong.dajeong.service;
 
 import com.dajeong.dajeong.dto.CommentRequestDTO;
@@ -11,6 +9,7 @@ import com.dajeong.dajeong.repository.CommentRepository;
 import com.dajeong.dajeong.repository.PostRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -21,7 +20,7 @@ public class CommentService {
     private final CommentRepository commentRepository;
     private final PostRepository postRepository;
 
-    // 댓글 작성: User 파라미터 추가
+    // 댓글 작성
     public void addComment(Long postId, CommentRequestDTO dto, User user) {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 게시글이 없습니다"));
@@ -34,15 +33,25 @@ public class CommentService {
         commentRepository.save(comment);
     }
 
-    // 댓글 목록 조회: authorName 매핑 추가
+    // 댓글 목록 조회
+    @Transactional(readOnly = true)
     public List<CommentResponseDTO> getComments(Long postId) {
-        List<Comment> comments = commentRepository.findByPostIdOrderByCreatedAtAsc(postId);
-        return comments.stream()
-                .map(c -> new CommentResponseDTO(
-                        c.getId(),
-                        c.getContent(),
-                        c.getUser().getName(),   // 작성자 이름
-                        c.getCreatedAt()))
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new IllegalArgumentException("게시글이 존재하지 않습니다"));
+
+        return post.getComments().stream()
+                .map(comment -> {
+                    User author = comment.getUser();
+                    return new CommentResponseDTO(
+                            comment.getId(),
+                            comment.getContent(),
+                            author.getName(),
+                            author.getNationality().getDescription(),  // ✅ 국적
+                            author.getRegion().getDescription(),       // ✅ 지역
+                            comment.getCreatedAt()
+                    );
+                })
                 .collect(Collectors.toList());
     }
+
 }

@@ -1,4 +1,7 @@
 package com.dajeong.dajeong.entity;
+import com.dajeong.dajeong.entity.enums.Region;
+import com.dajeong.dajeong.entity.enums.Nationality;
+import com.dajeong.dajeong.entity.enums.Children;
 
 import jakarta.persistence.*;
 import lombok.*;
@@ -22,18 +25,24 @@ public class User {
     @Column(nullable = false)
     private String name;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private String nationality;
+    private Nationality nationality;
 
-    @Column(nullable = false)
-    private int age;
+    @Column(name = "age", nullable = false)
+    private Integer age;
 
+    @Column(name = "child_age", nullable = false)
+    private Integer childAge;
+
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private String region;
+    private Region region;
 
     @Column(nullable = false)
     private Boolean married;
 
-    @Column(nullable = false)
-    private Boolean hasChildren;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "has_children", nullable = false)
+    private Children hasChildren;
 }

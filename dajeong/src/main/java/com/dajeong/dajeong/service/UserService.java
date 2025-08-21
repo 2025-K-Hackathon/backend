@@ -2,39 +2,26 @@ package com.dajeong.dajeong.service;
 
 import com.dajeong.dajeong.dto.LoginDTO;
 import com.dajeong.dajeong.dto.SignupDTO;
-import com.dajeong.dajeong.dto.UserlistDTO;
+import com.dajeong.dajeong.dto.UserResponseDTO;
 import com.dajeong.dajeong.entity.User;
 import com.dajeong.dajeong.repository.UserRepository;
-
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
+import java.util.NoSuchElementException;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class UserService {
 
     private final UserRepository userRepository;
-
-    // 전체 유저 목록 조회
-    public List<UserlistDTO> getUserListDTO() {
-        return userRepository.findAll().stream()
-                .map(u -> UserlistDTO.builder()
-                        .id(u.getId())
-                        .username(u.getUsername())
-                        .name(u.getName())
-                        .nationality(u.getNationality())
-                        .age(u.getAge())
-                        .region(u.getRegion())
-                        .married(u.getMarried())
-                        .hasChildren(u.getHasChildren())
-                        .build()
-                )
-                .toList();
-    }
+    private final PolicyRecommendTrigger policyRecommendTrigger;
 
     // 회원가입
+    @Transactional
     public void saveDTOUser(SignupDTO signupDTO) {
         if (userRepository.existsByUsername(signupDTO.getUsername())) {
             throw new IllegalArgumentException("이미 등록된 아이디입니다.");
@@ -45,17 +32,25 @@ public class UserService {
                 .name(signupDTO.getName())
                 .nationality(signupDTO.getNationality())
                 .age(signupDTO.getAge())
+                .childAge(signupDTO.getChildAge())
                 .region(signupDTO.getRegion())
                 .married(signupDTO.getMarried())
                 .hasChildren(signupDTO.getHasChildren())
                 .build();
-        userRepository.save(user);
+
+        User savedUser = userRepository.save(user);
+
+        try {
+            policyRecommendTrigger.generateAndSaveForToday(savedUser);
+        } catch (Exception e) {
+            log.warn("가입 직후 정책 추천 생성 실패 userId={}: {}", savedUser.getId(), e.getMessage());
+        }
     }
 
     // ID로 유저 DTO 조회
     public SignupDTO getUserDTOById(Long id) {
         User u = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new NoSuchElementException("User not found"));
         return SignupDTO.builder()
                 .id(u.getId())
                 .username(u.getUsername())
@@ -63,6 +58,7 @@ public class UserService {
                 .name(u.getName())
                 .nationality(u.getNationality())
                 .age(u.getAge())
+                .childAge(u.getChildAge())
                 .region(u.getRegion())
                 .married(u.getMarried())
                 .hasChildren(u.getHasChildren())
@@ -74,5 +70,13 @@ public class UserService {
         return userRepository.findByUsername(loginDTO.getUsername())
                 .filter(u -> u.getPassword().equals(loginDTO.getPassword()))
                 .orElse(null);
+    }
+
+    // **내 정보 조회용**: 세션에서 꺼낸 User 엔티티를 DTO로 변환
+    public UserResponseDTO getCurrentUserDTO(User user) {
+        if (user == null) {
+            throw new IllegalArgumentException("로그인된 사용자가 없습니다.");
+        }
+        return UserResponseDTO.fromEntity(user);
     }
 }

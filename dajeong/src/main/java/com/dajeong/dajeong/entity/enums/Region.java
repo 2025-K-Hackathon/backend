@@ -6,6 +6,7 @@ public enum Region {
     GANGWON("강원도"),
     GYEONGSANG("경상도"),
     JEOLLA("전라도"),
+    JEJU("제주도"),
     PRIVATE("비공개");
 
     private final String description;

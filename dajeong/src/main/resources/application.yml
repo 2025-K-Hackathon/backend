@@ -30,9 +30,27 @@ spring:
   profiles:
     active: dev
 
+
+server:
+  forward-headers-strategy: native
+  error:
+    include-stacktrace: never        
+    include-message: always   
+    include-binding-errors: never
+
+logging:
+  level:
+    org.springframework.security.web.FilterChainProxy: DEBUG
+
 openai:
   api:
     key: ${openai.api.key}
     base: ${openai.api.base}
   model:
     id: ${openai.model.id}
+
+dajeong:
+  python:
+    executable: "/mnt/venvs/dajeong/bin/python"
+    base-dir: "./python"
+    wrapper-dir: "./python/wrappers"

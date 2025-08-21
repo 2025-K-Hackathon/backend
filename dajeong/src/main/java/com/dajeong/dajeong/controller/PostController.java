@@ -2,6 +2,7 @@
 /// PostController.java
 package com.dajeong.dajeong.controller;
 
+import com.dajeong.dajeong.dto.PostDetailResponseDTO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -14,11 +15,18 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.http.ResponseEntity;
 import jakarta.servlet.http.HttpSession;
 import java.util.List;
+import java.util.Map;
 
 import com.dajeong.dajeong.dto.PostRequestDTO;
 import com.dajeong.dajeong.dto.PostResponseDTO;
 import com.dajeong.dajeong.entity.User;
 import com.dajeong.dajeong.service.PostService;
+
+import com.dajeong.dajeong.entity.enums.Nationality;
+import com.dajeong.dajeong.entity.enums.Region;
+import com.dajeong.dajeong.entity.enums.AgeGroup;
+import org.springframework.web.multipart.MultipartFile;
+
 
 @RestController
 @RequestMapping("/api/posts")
@@ -26,15 +34,33 @@ import com.dajeong.dajeong.service.PostService;
 public class PostController {
     private final PostService postService;
 
-    @PostMapping
-    public ResponseEntity<?> createPost(@RequestBody PostRequestDTO dto, HttpSession session) {
+    @PostMapping(consumes = "multipart/form-data")
+    public ResponseEntity<?> createPost(
+            @RequestParam("title") String title,
+            @RequestParam("content") String content,
+            @RequestParam("nationality") String nationality,
+            @RequestParam("region") String region,
+            @RequestParam("ageGroup") String ageGroup,
+            @RequestParam(value = "images", required = false) List<MultipartFile> images,
+            HttpSession session
+    ) {
         User user = (User) session.getAttribute("user");
         if (user == null) {
             return ResponseEntity.status(401).body("로그인 필요");
         }
-        postService.createPost(dto, user);
-        return ResponseEntity.ok().build();
+
+        PostRequestDTO dto = new PostRequestDTO();
+        dto.setTitle(title);
+        dto.setContent(content);
+        dto.setNationality(Nationality.valueOf(nationality));
+        dto.setRegion(Region.valueOf(region));
+        dto.setAgeGroup(AgeGroup.valueOf(ageGroup));
+
+        Long postId = postService.createPost(dto, images, user); // <- postId 받아오기
+
+        return ResponseEntity.ok().body(Map.of("postId", postId)); // <- postId 반환
     }
+
 
     @GetMapping
     public List<PostResponseDTO> getPosts(
@@ -79,4 +105,15 @@ public class PostController {
         PostResponseDTO dto = postService.getPostById(id);
         return ResponseEntity.ok(dto);
     }
+    @GetMapping("/{id}/detail")
+    public ResponseEntity<?> getPostDetail(@PathVariable Long id, HttpSession session) {
+        try {
+            User user = (User) session.getAttribute("user");
+            PostDetailResponseDTO detail = postService.getPostDetail(id, user);
+            return ResponseEntity.ok(detail);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(404).body(e.getMessage());
+        }
+    }
+
 }
